@@ -648,7 +648,7 @@ class LBRYElectrumX(asyncio.Protocol):
     MAX_CHUNK_SIZE = 40960
     session_counter = itertools.count()
     RESPONSE_TIMES = Histogram("response_time", "Response times", namespace=NAMESPACE,
-                               labelnames=("method", "version"), buckets=HISTOGRAM_BUCKETS)
+                               labelnames=("method", ), buckets=HISTOGRAM_BUCKETS)
     NOTIFICATION_COUNT = Counter("notification", "Number of notifications sent (for subscriptions)",
                                  namespace=NAMESPACE, labelnames=("method", "version"))
     REQUEST_ERRORS_COUNT = Counter(
@@ -1000,8 +1000,7 @@ class LBRYElectrumX(asyncio.Protocol):
         if isinstance(request, Request):
             message = request.send_result(result)
             self.RESPONSE_TIMES.labels(
-                method=request.method,
-                version=self.client_version
+                method=request.method
             ).observe(time.perf_counter() - start)
             if message:
                 await self._send_message(message)
