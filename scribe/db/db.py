@@ -1102,7 +1102,7 @@ class HubDB:
         history = []
         append_history = history.append
         while tx_nums:
-            batch, tx_nums = tx_nums[:100], tx_nums[100:]
+            batch, tx_nums = tx_nums[:1000], tx_nums[1000:]
             batch_result = self.get_tx_hashes(batch) if self._cache_all_tx_hashes else await run_in_executor(self._executor, self.get_tx_hashes, batch)
             for tx_num, tx_hash in zip(batch, batch_result):
                 append_history((tx_hash, bisect_right(self.tx_counts, tx_num)))
