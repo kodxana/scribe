@@ -268,6 +268,9 @@ class LargestValueCache:
         self._keys = []
         self._sizes = []
 
+    def items(self):
+        return self._cache.items()
+
     def get(self, key, default=None):
         return self._cache.get(key, default)
 

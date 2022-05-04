@@ -122,7 +122,23 @@ class HubServerService(BlockchainReaderService):
                 self.env.host, self.env.udp_port, self.env.allow_lan_udp
             )
 
+    def populate_largest_histories_cache(self):
+        self.log.info("populating address history cache")
+        for hashX, history in self.db.prefix_db.hashX_history.iterate():
+            self.large_history_cache[hashX] = history
+        self.log.info("sorted %i largest address histories", len(self.large_history_cache))
+        for hashX, history in self.large_history_cache.items():
+            full_history = []
+            append_full_history = full_history.append
+            for tx_num, tx_hash in zip(history, self.db.get_tx_hashes(history)):
+                append_full_history((tx_hash, bisect_right(self.db.tx_counts, tx_num)))
+            self.large_full_history_cache.set(hashX, full_history)
+        self.log.info("cached %i largest address histories ranging from %i to %i txs in length",
+                      len(self.large_history_cache), self.large_history_cache._sizes[-1],
+                      self.large_history_cache._sizes[0])
+
     def _iter_start_tasks(self):
+        self.populate_largest_histories_cache()
         yield self.start_status_server()
         yield self.start_cancellable(self.es_notification_client.maintain_connection)
         yield self.start_cancellable(self.mempool.send_notifications_forever)
