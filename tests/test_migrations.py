@@ -35,9 +35,11 @@ def legacy_rows(version, index_address_status=True, state_size=98):
     # Frozen wire layouts from the old fork (46a08e8), with the later derived
     # indexes added at their schema versions. Do not use today's row packers:
     # these fixtures must continue to represent databases written by older code.
+    # Versions 7 and 8 stored only catching_up; the address-index bit came later.
+    flags = int(index_address_status) << 1 if version >= 9 else 0
     state = struct.pack(
         '>32sLL32sLLBBlll', bytes.fromhex(LBCRegTest.GENESIS_HASH), 2, 5, b't' * 32,
-        4, 123456, int(index_address_status) << 1, version, 4, -1, -1
+        4, 123456, flags, version, 4, -1, -1
     )
     if state_size >= 98:
         state += struct.pack('>L', 1)
