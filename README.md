@@ -53,6 +53,15 @@ That completes the installation, now you should have the commands `scribe`, `scr
 
 These can also optionally be run with `python -m scribe.blockchain`, `python -m scribe.elasticsearch`, and `python -m scribe.hub`
 
+## Database tests
+
+With Docker and a Linux daemon available, run `sh scripts/test.sh` to build and
+test the installed Scribe package on Python 3.9. The database tests use temporary
+data and need no blockchain node or Elasticsearch server.
+
+See [the testing guide](docs/testing.md) for the rebuilt RocksDB comparison,
+test coverage, and the separate work needed for the resolve integration suite.
+
 ## Usage
 
 ### Requirements

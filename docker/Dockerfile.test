@@ -1,0 +1,30 @@
+FROM python:3.9-bullseye@sha256:5bd3c295ffab8b738108c7705052086d78b036078d5605dfc51e328ab758cc07
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+COPY docker/test-requirements.txt /opt/test-requirements.txt
+RUN python -m pip install --no-cache-dir -c /opt/test-requirements.txt pip setuptools wheel Cython \
+    && python -m pip install --no-cache-dir --no-build-isolation -r /opt/test-requirements.txt
+
+WORKDIR /opt/scribe
+COPY setup.py README.md ./
+COPY scribe ./scribe
+RUN --network=none python -m pip wheel --no-index --no-deps --no-build-isolation --wheel-dir /wheels . \
+    && python -m pip install --no-index --no-deps /wheels/*.whl
+
+# The optional wheel is supplied by the test runner, never fetched at runtime.
+COPY --from=binding / /opt/binding/
+RUN --network=none if [ -f /opt/binding/*.whl ]; then \
+        python -m pip install --force-reinstall --no-index --no-deps /opt/binding/*.whl \
+        && sha256sum /opt/binding/*.whl > /opt/binding-sha256.txt; \
+    fi \
+    && python -m pip check
+
+WORKDIR /opt/check
+COPY tests/__init__.py tests/test_revertable.py ./tests/
+COPY scripts/test-database.sh ./test-database.sh
+RUN useradd --create-home --uid 1000 tester \
+    && mkdir /results \
+    && chown -R tester:tester /results /opt/check
+USER tester
+ENV PYTHONUNBUFFERED=1
+CMD ["timeout", "--kill-after=30", "300", "sh", "./test-database.sh"]
