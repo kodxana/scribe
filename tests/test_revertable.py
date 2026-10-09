@@ -110,8 +110,66 @@ class TestRevertablePrefixDB(unittest.TestCase):
         self.db = PrefixDB(self.tmp_dir, max_open_files=32)
 
     def tearDown(self) -> None:
-        self.db.close()
+        if self.db is not None:
+            self.db.close()
         shutil.rmtree(self.tmp_dir)
+
+    def reopen(self):
+        self.db.close()
+        self.db = None
+        self.db = PrefixDB(self.tmp_dir, max_open_files=32)
+
+    def test_rollback_after_reopen(self):
+        name = 'persisted-claim'
+        claim_hash = b'\x01' * 20
+        tx_hash = b'\x02' * 32
+        first_block = b'\x03' * 32
+        second_block = b'\x04' * 32
+
+        self.db.claim_takeover.stage_put((name,), (claim_hash, 100))
+        self.db.tx_num.stage_put((tx_hash,), (7,))
+        self.db.commit(100, first_block)
+        self.reopen()
+        self.assertEqual((claim_hash, 100), self.db.claim_takeover.get(name))
+        self.assertEqual((7,), self.db.tx_num.get(tx_hash))
+
+        self.db.claim_takeover.stage_delete((name,), (claim_hash, 100))
+        self.db.claim_takeover.stage_put((name,), (claim_hash, 101))
+        self.db.tx_num.stage_delete((tx_hash,), (7,))
+        self.db.commit(101, second_block)
+        self.reopen()
+        self.assertEqual((claim_hash, 101), self.db.claim_takeover.get(name))
+        self.assertIsNone(self.db.tx_num.get(tx_hash))
+
+        self.db.rollback(101, second_block)
+        self.reopen()
+        self.assertEqual((claim_hash, 100), self.db.claim_takeover.get(name))
+        self.assertEqual((7,), self.db.tx_num.get(tx_hash))
+        self.db.rollback(100, first_block)
+        self.reopen()
+        self.assertIsNone(self.db.claim_takeover.get(name))
+        self.assertIsNone(self.db.tx_num.get(tx_hash))
+
+    def test_secondary_catches_up_after_commit_and_rollback(self):
+        name = 'secondary-claim'
+        claim_hash = b'\x05' * 20
+        block_hash = b'\x06' * 32
+        with tempfile.TemporaryDirectory() as secondary_dir:
+            secondary = PrefixDB(self.tmp_dir, secondary_path=secondary_dir)
+            try:
+                self.assertIsNone(secondary.claim_takeover.get(name))
+                self.db.claim_takeover.stage_put((name,), (claim_hash, 100))
+                self.db.commit(100, block_hash)
+                self.assertIsNone(secondary.claim_takeover.get(name))
+                secondary.try_catch_up_with_primary()
+                self.assertEqual((claim_hash, 100), secondary.claim_takeover.get(name))
+
+                self.db.rollback(100, block_hash)
+                self.assertEqual((claim_hash, 100), secondary.claim_takeover.get(name))
+                secondary.try_catch_up_with_primary()
+                self.assertIsNone(secondary.claim_takeover.get(name))
+            finally:
+                secondary.close()
 
     def test_rollback(self):
         name = 'derp'

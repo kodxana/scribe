@@ -8,6 +8,9 @@
 scribe.egg-info
 __pycache__
 /tests/.coverage.*
+/ci-results
+/.ci
+/.pytest_cache
 /.vscode
 /.gitignore
 .*pyc
