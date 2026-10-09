@@ -8,7 +8,7 @@ from hub.db.prefixes import ClaimToTXOPrefixRow, PrefixDB
 class TestRevertableOpStack(unittest.TestCase):
     def setUp(self):
         class FakeDB(dict):
-            def multi_get(keys):
+            def multi_get(self, keys):
                 return map(self.get, keys)
         self.fake_db = FakeDB()
         self.stack = RevertableOpStack(self.fake_db.get, self.fake_db.multi_get)
@@ -18,6 +18,7 @@ class TestRevertableOpStack(unittest.TestCase):
         self.fake_db.clear()
 
     def process_stack(self):
+        self.stack.validate_and_apply_stashed_ops()
         for op in self.stack:
             if op.is_put:
                 self.fake_db[op.key] = op.value
