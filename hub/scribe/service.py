@@ -1917,6 +1917,7 @@ class BlockchainProcessorService(BlockchainService):
 
     def backup_block(self):
         assert len(self.db.prefix_db._op_stack) == 0
+        self.db.assert_rollback_supported(self.height, self.db.block_hashes[-1])
         touched_and_deleted = self.db.prefix_db.touched_or_deleted.get(self.height)
         self.touched_claims_to_send_es.update(touched_and_deleted.touched_claims)
         self.removed_claims_to_send_es.difference_update(touched_and_deleted.touched_claims)

@@ -19,7 +19,7 @@ def get_all_hashXs(db):
             if last_hashX is None:
                 last_hashX = hashX
             if last_hashX != hashX:
-                yield hashX
+                yield last_hashX
                 last_hashX = hashX
         if last_hashX:
             yield last_hashX
@@ -61,19 +61,20 @@ def migrate(db):
         status = hashX_status_from_history(db, history)
         existing_status = prefix_db.hashX_status.get(hashX, deserialize_value=False)
         if existing_status and existing_status != status:
-            prefix_db.stage_raw_delete(key, existing_status)
-            op_cnt += 1
+            prefix_db.stash_raw_delete(key, existing_status)
+            prefix_db.stash_raw_put(key, status)
+            op_cnt += 2
         elif existing_status == status:
             pass
         else:
-            prefix_db.stage_raw_put(key, status)
+            prefix_db.stash_raw_put(key, status)
             op_cnt += 1
         if len(to_delete) > 1:
             for k, v in to_delete:
-                prefix_db.stage_raw_delete(k, v)
+                prefix_db.stash_raw_delete(k, v)
                 op_cnt += 1
             if history:
-                prefix_db.stage_raw_put(prefix_db.hashX_history.pack_key(hashX, 0), history)
+                prefix_db.stash_raw_put(prefix_db.hashX_history.pack_key(hashX, 0), history)
                 op_cnt += 1
         if op_cnt > 100000:
             prefix_db.unsafe_commit()
