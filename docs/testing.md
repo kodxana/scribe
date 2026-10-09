@@ -33,7 +33,7 @@ and installed package versions. Set `TEST_OUTPUT_DIR` to change the destination.
 
 ## Resolve and reorg tests
 
-Use the matching SDK checkout, including the shared protobuf 3.18.3 requirement:
+Use the matching SDK checkout, including the shared protobuf 3.20.3 requirement:
 
 ```sh
 git clone https://github.com/kodxana/lbry-sdk.git .ci/sdk
@@ -46,6 +46,11 @@ downloads and checksums its regtest binaries, then installs this checkout's Hub
 wheel over the SDK's pinned Hub. Tests import the installed Hub from a separate
 working directory. They use the SDK's maintained `CommandTestCase` and async
 runner; the unused, stale copy in `tests/testcase.py` has been removed.
+
+Both projects pin protobuf 3.20.3 because the upstream 3.18.3 macOS wheel
+crashes while importing the SDK's legacy claim messages, also reported in
+[protobuf issue #10691](https://github.com/protocolbuffers/protobuf/issues/10691).
+The generated message definitions are unchanged.
 
 All 37 tests in `tests/test_resolve_command.py` run, covering claim resolution,
 channel/short-ID handling, activation delays, supports, takeovers, expiration,
