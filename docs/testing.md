@@ -37,7 +37,7 @@ Use the matching SDK checkout, including the shared protobuf 3.20.3 requirement:
 
 ```sh
 git clone https://github.com/kodxana/lbry-sdk.git .ci/sdk
-git -C .ci/sdk checkout 500abb1d0894ec17081f8111f30e125d7c4f2c4e
+git -C .ci/sdk checkout a509cd605862ad456ef1cf415b8850cd9226dddd
 sh scripts/test-integration.sh .ci/sdk
 ```
 

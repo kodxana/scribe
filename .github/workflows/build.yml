@@ -77,7 +77,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kodxana/lbry-sdk
-          ref: 500abb1d0894ec17081f8111f30e125d7c4f2c4e
+          ref: a509cd605862ad456ef1cf415b8850cd9226dddd
           path: .ci/sdk
           persist-credentials: false
       - name: Download the tested binding
