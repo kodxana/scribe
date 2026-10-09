@@ -28,6 +28,27 @@ records across reopening, and secondary readers catching up after commits and
 rollbacks. The undo test helper applies upstream's staged operations before
 checking the resulting database.
 
+The 39 cases in `tests/test_migrations.py` cover startup upgrades from every
+supported version (7 through 11) to version 12, with address indexing enabled
+and disabled. Small fixtures encode legacy keys and 94-, 98-, and 102-byte state
+records independently of the current serializers, starting without the newer
+column families. Tests check transaction and
+claim records, UTXOs, history/status hashes, repost counts, and active/future
+amount totals after reopening the database. Exceptions injected before and
+after each migration batch commit exercise restart behavior. Empty indexes,
+stale derived rows, rebuilding address statuses after upgrading, and rollback of
+a block written after upgrading are covered.
+
+### Reorgs across a schema upgrade
+
+Old undo records remain on disk, but they cannot safely undo indexes added by a
+later schema. Before changing state, the block processor checks that the undo
+record restores the current database version. A reorg reaching a block written
+under an older schema stops with an explicit error; recovery requires a
+compatible Hub snapshot or a resync. This protects against partially reverting
+source data while leaving the new derived indexes unchanged. Blocks written
+after the upgrade retain normal rollback support.
+
 Results go to `ci-results/published/`: the Hub wheel, test log, JUnit report,
 and installed package versions. Set `TEST_OUTPUT_DIR` to change the destination.
 
@@ -89,6 +110,7 @@ tests that same wheel artifact. These workflows do not publish packages.
 ## Scope
 
 This validates Linux x86-64 on Python 3.9. It does not establish Python 3.13
-support or validate migrating an existing mainnet database from the old fork's
-schema to upstream's version 12. The regtest suites start with temporary
-databases; deployment and existing-data migration need separate validation.
+support. Migration tests use small synthetic legacy databases; they do not
+measure mainnet-scale migration time or test power-loss recovery, and no real
+wallet or mainnet database is opened. A production snapshot rehearsal is still
+needed before deployment. The regtest suites also start with temporary data.

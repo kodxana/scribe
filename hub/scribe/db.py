@@ -1,12 +1,15 @@
 import hashlib
 import asyncio
 import array
+import struct
 import time
 from typing import List
 from concurrent.futures.thread import ThreadPoolExecutor
 from bisect import bisect_right
 from hub.common import ResumableSHA256
 from hub.db import SecondaryDB
+from hub.db.common import DBError
+from hub.db.revertable import RevertableOp
 
 
 class PrimaryDB(SecondaryDB):
@@ -19,6 +22,27 @@ class PrimaryDB(SecondaryDB):
                          blocking_channel_ids, filtering_channel_ids, executor, index_address_status,
                          enforce_integrity=enforce_integrity)
 
+    def assert_rollback_supported(self, height: int, block_hash: bytes):
+        undo = self.prefix_db.undo.get(height, block_hash)
+        if undo is None:
+            raise DBError(f'cannot roll back block {height}: undo data is unavailable')
+        remaining = memoryview(undo)
+        try:
+            while remaining:
+                op, remaining = RevertableOp.unpack(remaining)
+                if op.is_put and op.key == self.prefix_db.db_state.prefix:
+                    state = self.prefix_db.db_state.unpack_value(bytes(op.value))
+                    if state.db_version != self.db_version:
+                        raise DBError(
+                            f'cannot roll back block {height}: undo schema {state.db_version} differs '
+                            f'from database schema {self.db_version}; restore a compatible Hub '
+                            'snapshot or resync the Hub database'
+                        )
+                    return
+        except struct.error as error:
+            raise DBError(f'cannot roll back block {height}: invalid undo data') from error
+        raise DBError(f'cannot roll back block {height}: undo data has no previous database state')
+
     def _rebuild_hashX_status_index(self, start_height: int):
         self.logger.warning("rebuilding the address status index...")
         prefix_db = self.prefix_db
@@ -30,7 +54,7 @@ class PrimaryDB(SecondaryDB):
                 if last_hashX is None:
                     last_hashX = hashX
                 if last_hashX != hashX:
-                    yield hashX
+                    yield last_hashX
                     last_hashX = hashX
             if last_hashX:
                 yield last_hashX
