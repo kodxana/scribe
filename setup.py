@@ -1,5 +1,5 @@
 import os
-from scribe import __name__, __version__
+from hub import __name__, __version__
 from setuptools import setup, find_packages
 
 BASE = os.path.dirname(__file__)
@@ -23,9 +23,9 @@ setup(
     zip_safe=False,
     entry_points={
         'console_scripts': [
-            'scribe=scribe.blockchain.__main__:main',
-            'scribe-hub=scribe.hub.__main__:main',
-            'scribe-elastic-sync=scribe.elasticsearch.__main__:main',
+            'scribe=hub.scribe.__main__:main',
+            'herald=hub.herald.__main__:main',
+            'scribe-elastic-sync=hub.elastic_sync.__main__:main',
         ],
     },
     install_requires=[
@@ -33,7 +33,7 @@ setup(
         'certifi>=2021.10.08',
         'colorama==0.3.7',
         'cffi==1.13.2',
-        'protobuf==3.17.2',
+        'protobuf==3.20.3',
         'msgpack==0.6.1',
         'prometheus_client==0.7.1',
         'coincurve==15.0.0',
@@ -44,7 +44,8 @@ setup(
         'filetype==1.0.9',
         'grpcio==1.38.0',
         'lbry-rocksdb==0.8.2',
-        'ujson==5.1.0'
+        'ujson==5.4.0',
+        'rehash==1.0.0'
     ],
     extras_require={
         'lint': ['pylint==2.10.0'],

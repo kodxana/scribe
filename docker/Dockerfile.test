@@ -5,9 +5,9 @@ COPY docker/test-requirements.txt /opt/test-requirements.txt
 RUN python -m pip install --no-cache-dir -c /opt/test-requirements.txt pip setuptools wheel Cython \
     && python -m pip install --no-cache-dir --no-build-isolation -r /opt/test-requirements.txt
 
-WORKDIR /opt/scribe
+WORKDIR /opt/hub
 COPY setup.py README.md ./
-COPY scribe ./scribe
+COPY hub ./hub
 RUN --network=none python -m pip wheel --no-index --no-deps --no-build-isolation --wheel-dir /wheels . \
     && python -m pip install --no-index --no-deps /wheels/*.whl
 

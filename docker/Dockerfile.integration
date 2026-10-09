@@ -1,0 +1,23 @@
+FROM sdk
+
+USER root
+WORKDIR /opt/hub
+COPY setup.py README.md ./
+COPY hub ./hub
+RUN --network=none python -m pip wheel --no-index --no-deps --no-build-isolation --wheel-dir /wheels . \
+    && python -m pip install --force-reinstall --no-index --no-deps /wheels/*.whl
+
+COPY --from=binding / /opt/binding/
+RUN --network=none if [ -f /opt/binding/*.whl ]; then \
+        python -m pip install --force-reinstall --no-index --no-deps /opt/binding/*.whl \
+        && sha256sum /opt/binding/*.whl > /opt/binding-sha256.txt; \
+    fi \
+    && python -m pip check
+
+WORKDIR /opt/check
+COPY tests/__init__.py tests/test_resolve_command.py ./tests/
+COPY scripts/test-resolve.sh ./test-resolve.sh
+RUN mkdir /results && chown -R sdk:sdk /opt/check /results
+USER sdk
+ENV PYTHONUNBUFFERED=1
+CMD ["timeout", "--kill-after=10", "1800", "sh", "./test-resolve.sh"]

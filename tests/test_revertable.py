@@ -1,20 +1,24 @@
 import unittest
 import tempfile
 import shutil
-from scribe.db.revertable import RevertableOpStack, RevertableDelete, RevertablePut, OpStackIntegrity
-from scribe.db.prefixes import ClaimToTXOPrefixRow, PrefixDB
+from hub.db.revertable import RevertableOpStack, RevertableDelete, RevertablePut, OpStackIntegrity
+from hub.db.prefixes import ClaimToTXOPrefixRow, PrefixDB
 
 
 class TestRevertableOpStack(unittest.TestCase):
     def setUp(self):
-        self.fake_db = {}
-        self.stack = RevertableOpStack(self.fake_db.get)
+        class FakeDB(dict):
+            def multi_get(self, keys):
+                return map(self.get, keys)
+        self.fake_db = FakeDB()
+        self.stack = RevertableOpStack(self.fake_db.get, self.fake_db.multi_get)
 
     def tearDown(self) -> None:
         self.stack.clear()
         self.fake_db.clear()
 
     def process_stack(self):
+        self.stack.validate_and_apply_stashed_ops()
         for op in self.stack:
             if op.is_put:
                 self.fake_db[op.key] = op.value
@@ -126,16 +130,16 @@ class TestRevertablePrefixDB(unittest.TestCase):
         first_block = b'\x03' * 32
         second_block = b'\x04' * 32
 
-        self.db.claim_takeover.stage_put((name,), (claim_hash, 100))
-        self.db.tx_num.stage_put((tx_hash,), (7,))
+        self.db.claim_takeover.stash_put((name,), (claim_hash, 100))
+        self.db.tx_num.stash_put((tx_hash,), (7,))
         self.db.commit(100, first_block)
         self.reopen()
         self.assertEqual((claim_hash, 100), self.db.claim_takeover.get(name))
         self.assertEqual((7,), self.db.tx_num.get(tx_hash))
 
-        self.db.claim_takeover.stage_delete((name,), (claim_hash, 100))
-        self.db.claim_takeover.stage_put((name,), (claim_hash, 101))
-        self.db.tx_num.stage_delete((tx_hash,), (7,))
+        self.db.claim_takeover.stash_delete((name,), (claim_hash, 100))
+        self.db.claim_takeover.stash_put((name,), (claim_hash, 101))
+        self.db.tx_num.stash_delete((tx_hash,), (7,))
         self.db.commit(101, second_block)
         self.reopen()
         self.assertEqual((claim_hash, 101), self.db.claim_takeover.get(name))
@@ -158,7 +162,7 @@ class TestRevertablePrefixDB(unittest.TestCase):
             secondary = PrefixDB(self.tmp_dir, secondary_path=secondary_dir)
             try:
                 self.assertIsNone(secondary.claim_takeover.get(name))
-                self.db.claim_takeover.stage_put((name,), (claim_hash, 100))
+                self.db.claim_takeover.stash_put((name,), (claim_hash, 100))
                 self.db.commit(100, block_hash)
                 self.assertIsNone(secondary.claim_takeover.get(name))
                 secondary.try_catch_up_with_primary()
@@ -180,24 +184,24 @@ class TestRevertablePrefixDB(unittest.TestCase):
         takeover_height = 10000000
 
         self.assertIsNone(self.db.claim_takeover.get(name))
-        self.db.claim_takeover.stage_put((name,), (claim_hash1, takeover_height))
+        self.db.claim_takeover.stash_put((name,), (claim_hash1, takeover_height))
         self.assertIsNone(self.db.claim_takeover.get(name))
         self.assertEqual(10000000, self.db.claim_takeover.get_pending(name).height)
 
         self.db.commit(10000000, b'\x00' * 32)
         self.assertEqual(10000000, self.db.claim_takeover.get(name).height)
 
-        self.db.claim_takeover.stage_delete((name,), (claim_hash1, takeover_height))
-        self.db.claim_takeover.stage_put((name,), (claim_hash2, takeover_height + 1))
-        self.db.claim_takeover.stage_delete((name,), (claim_hash2, takeover_height + 1))
+        self.db.claim_takeover.stash_delete((name,), (claim_hash1, takeover_height))
+        self.db.claim_takeover.stash_put((name,), (claim_hash2, takeover_height + 1))
+        self.db.claim_takeover.stash_delete((name,), (claim_hash2, takeover_height + 1))
         self.db.commit(10000001, b'\x01' * 32)
         self.assertIsNone(self.db.claim_takeover.get(name))
-        self.db.claim_takeover.stage_put((name,), (claim_hash3, takeover_height + 2))
+        self.db.claim_takeover.stash_put((name,), (claim_hash3, takeover_height + 2))
         self.db.commit(10000002, b'\x02' * 32)
         self.assertEqual(10000002, self.db.claim_takeover.get(name).height)
 
-        self.db.claim_takeover.stage_delete((name,), (claim_hash3, takeover_height + 2))
-        self.db.claim_takeover.stage_put((name,), (claim_hash2, takeover_height + 3))
+        self.db.claim_takeover.stash_delete((name,), (claim_hash3, takeover_height + 2))
+        self.db.claim_takeover.stash_put((name,), (claim_hash2, takeover_height + 3))
         self.db.commit(10000003, b'\x03' * 32)
         self.assertEqual(10000003, self.db.claim_takeover.get(name).height)
 
@@ -217,15 +221,15 @@ class TestRevertablePrefixDB(unittest.TestCase):
         claim_hash2 = 20 * b'\x02'
         claim_hash3 = 20 * b'\x03'
         overflow_value = 0xffffffff
-        self.db.claim_expiration.stage_put((99, 999, 0), (claim_hash0, name))
-        self.db.claim_expiration.stage_put((100, 1000, 0), (claim_hash1, name))
-        self.db.claim_expiration.stage_put((100, 1001, 0), (claim_hash2, name))
-        self.db.claim_expiration.stage_put((101, 1002, 0), (claim_hash3, name))
-        self.db.claim_expiration.stage_put((overflow_value - 1, 1003, 0), (claim_hash3, name))
-        self.db.claim_expiration.stage_put((overflow_value, 1004, 0), (claim_hash3, name))
-        self.db.tx_num.stage_put((b'\x00' * 32,), (101,))
-        self.db.claim_takeover.stage_put((name,), (claim_hash3, 101))
-        self.db.db_state.stage_put((), (b'n?\xcf\x12\x99\xd4\xec]y\xc3\xa4\xc9\x1dbJJ\xcf\x9e.\x17=\x95\xa1\xa0POgvihuV', 0, 1, b'VuhivgOP\xa0\xa1\x95=\x17.\x9e\xcfJJb\x1d\xc9\xa4\xc3y]\xec\xd4\x99\x12\xcf?n', 1, 0, 1, 7, 1, -1, -1, 0))
+        self.db.claim_expiration.stash_put((99, 999, 0), (claim_hash0, name))
+        self.db.claim_expiration.stash_put((100, 1000, 0), (claim_hash1, name))
+        self.db.claim_expiration.stash_put((100, 1001, 0), (claim_hash2, name))
+        self.db.claim_expiration.stash_put((101, 1002, 0), (claim_hash3, name))
+        self.db.claim_expiration.stash_put((overflow_value - 1, 1003, 0), (claim_hash3, name))
+        self.db.claim_expiration.stash_put((overflow_value, 1004, 0), (claim_hash3, name))
+        self.db.tx_num.stash_put((b'\x00' * 32,), (101,))
+        self.db.claim_takeover.stash_put((name,), (claim_hash3, 101))
+        self.db.db_state.stash_put((), (b'n?\xcf\x12\x99\xd4\xec]y\xc3\xa4\xc9\x1dbJJ\xcf\x9e.\x17=\x95\xa1\xa0POgvihuV', 0, 1, b'VuhivgOP\xa0\xa1\x95=\x17.\x9e\xcfJJb\x1d\xc9\xa4\xc3y]\xec\xd4\x99\x12\xcf?n', 1, 0, 1, 7, 1, -1, -1, 0, 0, 0))
         self.db.unsafe_commit()
 
         state = self.db.db_state.get()
@@ -272,9 +276,9 @@ class TestRevertablePrefixDB(unittest.TestCase):
         tx_num = 101
         for x in range(255):
             claim_hash = 20 * chr(x).encode()
-            self.db.active_amount.stage_put((claim_hash, 1, 200, tx_num, 1), (100000,))
-            self.db.active_amount.stage_put((claim_hash, 1, 201, tx_num + 1, 1), (200000,))
-            self.db.active_amount.stage_put((claim_hash, 1, 202, tx_num + 2, 1), (300000,))
+            self.db.active_amount.stash_put((claim_hash, 1, 200, tx_num, 1), (100000,))
+            self.db.active_amount.stash_put((claim_hash, 1, 201, tx_num + 1, 1), (200000,))
+            self.db.active_amount.stash_put((claim_hash, 1, 202, tx_num + 2, 1), (300000,))
             tx_num += 3
         self.db.unsafe_commit()
 
