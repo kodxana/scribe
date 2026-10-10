@@ -28,6 +28,9 @@ from a versioned GitHub release with a SHA-256 pin. The wheel requires
 other architectures and other Python versions are not supported by this build.
 The installer no longer falls back to the abandoned binding.
 
+The Python 3.13 candidate is version `1.1.0rc1`. See its
+[release notes](docs/releases/1.1.0rc1.md) for compatibility and validation limits.
+
 Create a fresh virtual environment when upgrading. The old and new bindings
 both install `rocksdb` module files and must not coexist. Updating Hub in place
 does not automatically remove the old distribution. The database directory and
