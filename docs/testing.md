@@ -43,6 +43,12 @@ RPC tests cover request completion, batch ordering and disconnects. Protobuf
 tests compare captured descriptors and serialized messages with the regenerated
 modules. CI separately checks reproducible generation from the vendored schemas.
 
+Real-socket session tests check that pausing listeners leaves connected clients
+usable, and shutdown closes clients before awaiting the listener. This ordering
+avoids the modern asyncio `Server.wait_closed()` deadlock. Integration test
+namespaces reserve ports 50001-50100 for Hub listeners so outgoing connections
+cannot claim them between restarts; the host network configuration is unchanged.
+
 The service shutdown tests in `tests/test_service.py` check that background
 tasks finish their cleanup before databases and search clients close. They also
 check that failed tasks are reported, normal shutdown preserves the search
