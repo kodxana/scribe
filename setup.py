@@ -52,7 +52,7 @@ setup(
         'sys_platform != "linux" or platform_machine != "x86_64" or '
         'python_version != "3.9" or implementation_name != "cpython"',
         'ujson==5.4.0',
-        'rehash==1.0.0'
+        'sha256==1.0'
     ],
     extras_require={
         'lint': ['pylint==2.10.0'],

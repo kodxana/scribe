@@ -14,6 +14,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  hash-state:
+    name: Saved hash state / Python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+      - name: Check saved states without the Hub runtime dependencies
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+        run: |
+          uv venv --python "$PYTHON_VERSION" .venv
+          uv pip install --python .venv/bin/python sha256==1.0
+          .venv/bin/python -m unittest tests.test_sha256 -v
+
   database:
     name: Database / ${{ matrix.binding }} RocksDB
     runs-on: ubuntu-24.04

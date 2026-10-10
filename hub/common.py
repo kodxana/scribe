@@ -7,14 +7,13 @@ import logging
 import logging.handlers
 import typing
 import collections
-from ctypes import cast, memmove, POINTER, c_void_p
 from bisect import insort_right
 from collections import deque
 from decimal import Decimal
 from typing import Iterable, Deque
 from asyncio import get_event_loop, Event
 from prometheus_client import Counter
-from rehash.structs import EVPobject
+from hub.sha256 import ResumableSHA256
 from hub.schema.tags import clean_tags
 from hub.schema.url import normalize_name
 from hub.error import TooManyClaimSearchParametersError
@@ -1061,41 +1060,3 @@ async def asyncify_for_loop(gen, ticks_per_sleep: int = 1000):
         yield item
         if cnt % ticks_per_sleep == 0:
             await async_sleep(0)
-
-
-_SHA256_DIGEST_STATE_SIZE = 120
-
-
-class ResumableSHA256:
-    __slots__ = ['_hasher']
-
-    def __init__(self, state: typing.Optional[bytes] = None):
-        self._hasher = hashlib.sha256()
-        if state is not None:
-            ctx = self._get_evp_md_ctx()
-            ctx_size = ctx.digest.contents.ctx_size
-            if len(state) != _SHA256_DIGEST_STATE_SIZE != ctx_size:
-                raise Exception(f'invalid sha256 digester state, got {len(state)} bytes')
-            memmove(ctx.md_data, state, ctx_size)
-
-    def _get_evp_md_ctx(self):
-        c_evp_obj = cast(c_void_p(id(self._hasher)), POINTER(EVPobject))
-        if hasattr(c_evp_obj.contents.ctx, "contents"):
-            return c_evp_obj.contents.ctx.contents
-        else:
-            return c_evp_obj.contents.ctx
-
-    def get_state(self) -> bytes:
-        ctx = self._get_evp_md_ctx()
-        ctx_size = ctx.digest.contents.ctx_size
-        hasher_state = ctx.md_data[:ctx_size]
-        return hasher_state
-
-    def __copy__(self):
-        return ResumableSHA256(self.get_state())
-
-    def update(self, data: bytes):
-        self._hasher.update(data)
-
-    def digest(self):
-        return self._hasher.digest()
