@@ -23,6 +23,7 @@ WORKDIR /opt/check
 COPY tests/__init__.py tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py tests/test_service.py tests/test_session_manager.py tests/test_sha256.py ./tests/
 COPY tests/fixtures ./tests/fixtures
 COPY tests/test_jsonrpc.py ./tests/
+COPY tests/test_notifier_protocol.py ./tests/
 COPY tests/test_protobuf.py ./tests/
 COPY scripts/test-database.sh ./test-database.sh
 RUN useradd --create-home --uid 1000 tester \

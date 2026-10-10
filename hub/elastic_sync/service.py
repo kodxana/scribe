@@ -55,12 +55,20 @@ class ElasticSyncService(BlockchainReaderService):
             index_address_status=env.index_address_status
         )
 
+    def make_es_notifier(self):
+        def latest():
+            if self._last_wrote_block_hash is not None:
+                return self._last_wrote_height, bytes.fromhex(self._last_wrote_block_hash)[::-1]
+            return None
+
+        return ElasticNotifierProtocol(self._listeners, latest)
+
     async def run_es_notifier(self, synchronized: asyncio.Event):
         started = False
         while not started:
             try:
                 server = await asyncio.get_event_loop().create_server(
-                    lambda: ElasticNotifierProtocol(self._listeners),
+                    self.make_es_notifier,
                     self.env.elastic_notifier_host,
                     self.env.elastic_notifier_port
                 )
