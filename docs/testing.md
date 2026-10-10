@@ -1,8 +1,9 @@
 # Test baseline
 
 The fork includes upstream Hub through `ebcc6e508660f72fe11d308ae4031971b5fbf782`,
-including the rename from the `scribe` package to `hub`. The repository remains
-`kodxana/scribe`, and its custom Docker publishing workflow is preserved.
+including the rename from the `scribe` package to `hub`. The community repository
+is now `kodxana/lbry-hub-ng` (formerly `kodxana/scribe`). Its custom Docker
+publishing workflow is preserved.
 
 ## Database tests
 
@@ -65,7 +66,7 @@ Use the matching SDK checkout, including RPC cancellation cleanup and the
 shared protobuf 3.20.3 requirement:
 
 ```sh
-git clone https://github.com/kodxana/lbry-sdk.git .ci/sdk
+git clone https://github.com/kodxana/lbry-sdk-ng.git .ci/sdk
 git -C .ci/sdk checkout 717ab172b8951aacb17dc150188e57b07407688e
 sh scripts/test-integration.sh .ci/sdk
 ```
@@ -102,7 +103,7 @@ exit. Both runners preserve nonzero test exits.
 ## Compare the maintained RocksDB binding
 
 By default both runners install the hash-pinned `lbry-rocksdb-ng` 0.8.3 wheel
-from [the GitHub release](https://github.com/kodxana/lbry-rocksdb/releases/tag/v0.8.3).
+from [the GitHub release](https://github.com/kodxana/lbry-rocksdb-ng/releases/tag/v0.8.3).
 To test a
 locally built Linux CPython 3.9 wheel, pass its path:
 
@@ -115,7 +116,7 @@ Results use the `local-wheel` suffix and record the supplied wheel's SHA-256.
 Installation is offline and does not replace other dependencies.
 
 CI runs both suites with the published release and a binding rebuilt from
-[`kodxana/lbry-rocksdb` at `c540bbc9502293101dc29a8535443a69bcf0b821`](https://github.com/kodxana/lbry-rocksdb/commit/c540bbc9502293101dc29a8535443a69bcf0b821),
+[`kodxana/lbry-rocksdb-ng` at `c540bbc9502293101dc29a8535443a69bcf0b821`](https://github.com/kodxana/lbry-rocksdb-ng/commit/c540bbc9502293101dc29a8535443a69bcf0b821),
 which releases live iterators and snapshots safely when a database closes.
 That checkout builds its pinned native libraries and passes its binding suite
 before the wheel reaches the Hub database job. The resolve job downloads and

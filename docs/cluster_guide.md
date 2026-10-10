@@ -124,8 +124,8 @@ sudo systemctl start lbcd-tunnel.service
 ```
   - Build the hub docker image on the hub instance by running the following:
 ```
-git clone https://github.com/lbryio/hub.git
-cd hub
+git clone https://github.com/kodxana/lbry-hub-ng.git
+cd lbry-hub-ng
 docker build -t lbry/hub:development .
 ```
   - Copy the following to `~/docker-compose.yml` on the hub instance
@@ -198,4 +198,4 @@ services:
   - Check the status with `docker-compose logs -f --tail 100`
 
 ### Manual setup of docker volumes from snapshots
-  For an example of copying and configuring permissions for a hub docker volume, see [this](https://github.com/lbryio/hub/blob/master/scripts/initialize_rocksdb_snapshot_dev.sh). For an example for the elasticsearch volume, see [this](https://github.com/lbryio/hub/blob/master/scripts/initialize_es_snapshot_dev.sh). **Read these scripts before running them** to avoid overwriting the wrong volume, they are more of a guide on how to set the permissions and where files go than setup scripts.
+  For an example of copying and configuring permissions for a hub docker volume, see [this](../scripts/initialize_rocksdb_snapshot_dev.sh). For an example for the elasticsearch volume, see [this](../scripts/initialize_es_snapshot_dev.sh). **Read these scripts before running them** to avoid overwriting the wrong volume, they are more of a guide on how to set the permissions and where files go than setup scripts.

@@ -23,7 +23,7 @@ def test_binding_requirement_selects_one_distribution(system, machine, python, i
     assert [item.name for item in selected] == [expected]
     if expected == 'lbry-rocksdb-ng':
         assert selected[0].url.startswith(
-            'https://github.com/kodxana/lbry-rocksdb/releases/download/v0.8.3/'
+            'https://github.com/kodxana/lbry-rocksdb-ng/releases/download/v0.8.3/'
             'lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl#sha256='
         )
         assert len(selected[0].url.split('#sha256=')[1]) == 64

@@ -11,9 +11,9 @@ setup(
     name=__name__,
     version=__version__,
     author="LBRY Inc.",
-    author_email="hello@lbry.com",
-    url="https://lbry.com",
-    description="A decentralized media library and marketplace",
+    maintainer="LBRY NG contributors",
+    url="https://github.com/kodxana/lbry-hub-ng",
+    description="Community-maintained LBRY Hub for blockchain indexing and wallet services",
     long_description=long_description,
     long_description_content_type="text/markdown",
     keywords="lbry protocol electrum spv",
@@ -43,7 +43,7 @@ setup(
         'hachoir==3.1.2',
         'filetype==1.0.9',
         'grpcio==1.38.0',
-        'lbry-rocksdb-ng @ https://github.com/kodxana/lbry-rocksdb/releases/download/v0.8.3/'
+        'lbry-rocksdb-ng @ https://github.com/kodxana/lbry-rocksdb-ng/releases/download/v0.8.3/'
         'lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl'
         '#sha256=c0313ce0c346b441f4e58705adab16cf27ec189e0d05897adbcb97ca6273e7a2 ; '
         'sys_platform == "linux" and platform_machine == "x86_64" and '
