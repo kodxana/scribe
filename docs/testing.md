@@ -13,7 +13,7 @@ With Docker and a Linux daemon available:
 sh scripts/test.sh
 ```
 
-On Windows, run the command from WSL. The image pins Python 3.9.23 by digest and
+On Windows, run the command from WSL. The image pins Python 3.13 by digest and
 pins the test environment in `docker/test-requirements.txt`. It builds and
 installs a Hub wheel, then runs outside the source directory as an unprivileged
 user. `pip check` verifies the installed dependency metadata.
@@ -23,18 +23,25 @@ limited to two CPUs and 4 GiB of memory, with a five-minute process timeout.
 Dependency installation and compilation happen during the Docker build, which
 does need network access. CI has a 45-minute job timeout.
 
-The six tests in `tests/test_revertable.py` cover operation-stack integrity,
+The tests in `tests/test_revertable.py` cover operation-stack integrity,
 block commits and rollback, prefix/range/reverse iteration, persisted undo
 records across reopening, and secondary readers catching up after commits and
 rollbacks. The undo test helper applies upstream's staged operations before
 checking the resulting database.
 
 The installed-distribution tests verify that the maintained binding is the only
-RocksDB distribution present and that Hub's package metadata selects exactly one
-binding for each supported selection case. Linux x86-64 CPython 3.9 selects the
-GitHub wheel; other interpreters, operating systems and architectures retain the
-legacy requirement. This checks dependency selection, not runtime support for
-those legacy environments.
+RocksDB distribution present and that Hub's package metadata selects the
+CPython 3.13 GitHub wheel. The runtime requires Linux x86-64 with glibc 2.35 or
+newer; the installer no longer falls back to the abandoned binding.
+
+Saved SHA-256 fixtures cover states from the old OpenSSL implementation, block
+boundaries and bit counters. Database tests load those bytes, append history,
+reopen the database and roll back to the original bytes. The standalone hash
+tests also run on Python 3.9 for comparison; that job does not install the Hub.
+
+RPC tests cover request completion, batch ordering and disconnects. Protobuf
+tests compare captured descriptors and serialized messages with the regenerated
+modules. CI separately checks reproducible generation from the vendored schemas.
 
 The service shutdown tests in `tests/test_service.py` check that background
 tasks finish their cleanup before databases and search clients close. They also
@@ -76,11 +83,11 @@ and installed package versions. Set `TEST_OUTPUT_DIR` to change the destination.
 ## Resolve and reorg tests
 
 Use the matching SDK checkout, including RPC cancellation cleanup and the
-shared protobuf 3.20.3 requirement:
+shared protobuf 7.36.2 requirement:
 
 ```sh
 git clone https://github.com/kodxana/lbry-sdk-ng.git .ci/sdk
-git -C .ci/sdk checkout c85b9d4767db8226896a8ddfc6acd80db14614ca
+git -C .ci/sdk checkout 89c4029bf54671148ecfccd47a6f76646f090cb1
 sh scripts/test-integration.sh .ci/sdk
 ```
 
@@ -94,10 +101,9 @@ Tests import the installed Hub from a separate
 working directory. They use the SDK's maintained `CommandTestCase` and async
 runner; the unused, stale copy in `tests/testcase.py` has been removed.
 
-Both projects pin protobuf 3.20.3 because the upstream 3.18.3 macOS wheel
-crashes while importing the SDK's legacy claim messages, also reported in
-[protobuf issue #10691](https://github.com/protocolbuffers/protobuf/issues/10691).
-The generated message definitions are unchanged.
+Both projects pin protobuf 7.36.2 and use regenerated modules. Compatibility
+fixtures preserve the deployed wire definitions, including legacy claims and
+the Hub's result schema. See [schema generation](../hub/schema/README.md).
 
 All 37 tests in `tests/test_resolve_command.py` run, covering claim resolution,
 channel/short-ID handling, activation delays, supports, takeovers, expiration,
@@ -124,33 +130,33 @@ exit. Both runners preserve nonzero test exits.
 By default both runners install the hash-pinned `lbry-rocksdb-ng` 0.8.3 wheel
 from [the GitHub release](https://github.com/kodxana/lbry-rocksdb-ng/releases/tag/v0.8.3).
 To test a
-locally built Linux CPython 3.9 wheel, pass its path:
+locally built Linux CPython 3.13 wheel, pass its path:
 
 ```sh
-sh scripts/test.sh /path/to/lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl
-sh scripts/test-integration.sh .ci/sdk /path/to/lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl
+sh scripts/test.sh /path/to/lbry_rocksdb_ng-0.8.3-cp313-cp313-manylinux_2_35_x86_64.whl
+sh scripts/test-integration.sh .ci/sdk /path/to/lbry_rocksdb_ng-0.8.3-cp313-cp313-manylinux_2_35_x86_64.whl
 ```
 
 Results use the `local-wheel` suffix and record the supplied wheel's SHA-256.
 Installation is offline and does not replace other dependencies.
 
 CI runs both suites with the published release and a binding rebuilt from
-[`kodxana/lbry-rocksdb-ng` at `c540bbc9502293101dc29a8535443a69bcf0b821`](https://github.com/kodxana/lbry-rocksdb-ng/commit/c540bbc9502293101dc29a8535443a69bcf0b821),
+[`kodxana/lbry-rocksdb-ng` at `cdbe008312a191b3099065a94c470818b10d6d9d`](https://github.com/kodxana/lbry-rocksdb-ng/commit/cdbe008312a191b3099065a94c470818b10d6d9d),
 which releases live iterators and snapshots safely when a database closes.
 That checkout builds its pinned native libraries and passes its binding suite
 before the wheel reaches the Hub database job. The resolve job downloads and
 tests that same wheel artifact. These workflows do not publish packages.
 
 Normal Hub installs now receive the same release on the tested Linux x86-64
-CPython 3.9 platform, with `manylinux_2_31` system-library requirements. Other
-platforms retain the old requirement. Start with a fresh environment when
+CPython 3.13 platform, with `manylinux_2_35` system-library requirements. Other
+platforms are not supported by this build. Start with a fresh environment when
 switching distributions; their `rocksdb` module files overlap. Neither the
 database directory name nor the database format changes.
 
 ## Scope
 
-This validates Linux x86-64 on Python 3.9. It does not establish Python 3.13
-support. Migration tests use small synthetic legacy databases; they do not
+This validation targets Linux x86-64 on Python 3.13. Migration tests use small
+synthetic legacy databases; they do not
 measure mainnet-scale migration time or test power-loss recovery, and no real
 wallet or mainnet database is opened. A production snapshot rehearsal is still
 needed before deployment. The regtest suites also start with temporary data.
