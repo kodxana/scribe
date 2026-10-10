@@ -14,7 +14,7 @@ from asyncio import Event, sleep
 from collections import defaultdict, namedtuple
 from contextlib import suppress
 from functools import partial
-from elasticsearch import ConnectionTimeout
+from elasticsearch import ConnectionTimeout, ConnectionError as ElasticConnectionError
 from prometheus_client import Counter, Info, Histogram, Gauge
 from hub.schema.result import Outputs
 from hub.error import ResolveCensoredError, TooManyClaimSearchParametersError
@@ -1308,6 +1308,8 @@ class LBRYElectrumX(asyncio.Protocol):
         except ConnectionTimeout:
             self.session_manager.search_index.timeout_counter.inc()
             raise RPCError(JSONRPC.QUERY_TIMEOUT, 'query timed out')
+        except ElasticConnectionError:
+            raise RPCError(JSONRPC.SEARCH_UNAVAILABLE, 'claim search is temporarily unavailable')
         except TooManyClaimSearchParametersError as err:
             await asyncio.sleep(2)
             self.logger.warning("Got an invalid query from %s, for %s with more than %d elements.",
