@@ -294,7 +294,7 @@ class SessionManager:
 
 
     async def _close_servers(self, kinds):
-        """Close the servers of the given kinds (TCP etc.)."""
+        """Stop accepting connections without waiting for existing sessions."""
         if kinds:
             self.logger.info('closing down {} listening servers'
                              .format(', '.join(kinds)))
@@ -302,7 +302,6 @@ class SessionManager:
             server = self.servers.pop(kind, None)
             if server:
                 server.close()
-                await server.wait_closed()
 
     async def _manage_servers(self):
         paused = False
@@ -631,12 +630,16 @@ class SessionManager:
             self.logger.exception("hub server died")
             raise
         finally:
+            servers = list(self.servers.values())
             try:
                 await self._close_servers(list(self.servers.keys()))
             finally:
                 try:
                     self.logger.info("disconnect %i sessions", len(self.sessions))
                     await self._close_sessions(list(self.sessions.values()), force_after=1)
+                    # Python 3.12+ waits for client connections in wait_closed().
+                    # Close them first; pausing listeners must also leave them usable.
+                    await asyncio.gather(*(server.wait_closed() for server in servers))
                 finally:
                     await self.stop_other()
                     # The owning service cancels serve() when this is signaled.

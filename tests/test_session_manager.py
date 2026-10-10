@@ -164,7 +164,7 @@ class SessionManagerTests(IsolatedAsyncioTestCase):
         self.assertFalse(self.manager.running)
 
     async def test_startup_failure_closes_partial_listener_and_connections(self):
-        self.manager.servers['TCP'] = Mock()
+        self.manager.servers['TCP'] = Mock(wait_closed=AsyncMock())
         session = SimpleNamespace(session_id=1, close=AsyncMock())
         self.manager.sessions[1] = session
         self.manager._start_external_servers.side_effect = RuntimeError('listen failed')
@@ -277,3 +277,53 @@ class SessionManagerTests(IsolatedAsyncioTestCase):
                 await asyncio.wait_for(self.serving, 1)
         self.assertTrue(finished.is_set())
         self.assertTrue(all(task.done() for task in self.children))
+
+    async def open_real_connection(self):
+        accepted = asyncio.Queue()
+        server = await asyncio.start_server(
+            lambda reader, writer: accepted.put_nowait((reader, writer)), '127.0.0.1', 0
+        )
+        client_reader, client_writer = await asyncio.open_connection(
+            *server.sockets[0].getsockname()
+        )
+        server_reader, server_writer = await asyncio.wait_for(accepted.get(), 1)
+
+        async def cleanup():
+            client_writer.close()
+            server_writer.close()
+            await asyncio.gather(client_writer.wait_closed(), server_writer.wait_closed())
+            server.close()
+            await asyncio.wait_for(server.wait_closed(), 1)
+
+        self.addAsyncCleanup(cleanup)
+        self.manager.servers['TCP'] = server
+        self.manager._close_servers = SessionManager._close_servers.__get__(self.manager)
+        return server, client_reader, client_writer, server_reader, server_writer
+
+    async def test_pausing_listener_keeps_existing_connections_usable(self):
+        _, _, client_writer, server_reader, _ = await self.open_real_connection()
+        await asyncio.wait_for(self.manager._close_servers(['TCP']), 1)
+        self.assertEqual(self.manager.servers, {})
+        client_writer.write(b'still connected')
+        await client_writer.drain()
+        self.assertEqual(await asyncio.wait_for(server_reader.read(15), 1), b'still connected')
+
+    async def test_shutdown_closes_sessions_before_waiting_for_listener(self):
+        server, client_reader, _, _, server_writer = await self.open_real_connection()
+
+        async def close_session(force_after):
+            server_writer.close()
+            await server_writer.wait_closed()
+            self.manager.sessions.pop(1)
+
+        self.manager.sessions[1] = SimpleNamespace(
+            session_id=1, close=AsyncMock(side_effect=close_session)
+        )
+        ready, _, _ = self.start_loops()
+        await self.wait_for_loops(ready)
+        self.serving.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await asyncio.wait_for(self.serving, 1)
+        await asyncio.wait_for(server.wait_closed(), 1)
+        self.assertEqual(await asyncio.wait_for(client_reader.read(), 1), b'')
+        self.assertEqual(self.manager.sessions, {})
