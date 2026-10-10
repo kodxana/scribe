@@ -1,24 +1,38 @@
-Schema
-=====
+# Protocol schemas
 
-Those files are generated from the [types repo](https://github.com/lbryio/types). If you are modifying/adding a new type, make sure it is cloned in the same root folder as the scribe repo, like:
+The SDK and Hub use protobuf 7.36.2. Generated modules are checked in so normal
+installations do not need a protocol compiler. Do not edit generated `_pb2.py`
+files by hand.
 
-```
-repos/
-    - scribe/
-    - types/
-```
+## Regeneration
 
-Then, [download protoc 3.2.0](https://github.com/protocolbuffers/protobuf/releases/tag/v3.2.0), add it to your PATH. On linux it is:
+From the repository root, create a separate Python 3.13 environment, install
+`hub/schema/requirements.txt`, and run:
 
-```bash
-cd ~/.local/bin
-wget https://github.com/protocolbuffers/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip
-unzip protoc-3.2.0-linux-x86_64.zip bin/protoc -d..
+```sh
+python scripts/regenerate_schema.py
+python scripts/regenerate_schema.py --check
 ```
 
-Finally, `make` should update everything in place.
+The script requires the pinned `grpcio-tools==1.84.0` compiler (libprotoc 35.1)
+and protobuf runtime. It generates into a temporary directory, then adjusts
+Python imports and module names for this package. CI checks that the committed
+modules match these inputs. Existing JSON schemas are left intact.
 
+## Source and wire compatibility
 
-### Why protoc 3.2.0?
-Different/newer versions will generate larger diffs and we need to make sure they are good. In theory, we can just update to latest and it will all work, but it is a good practice to check blockchain data and retro compatibility before bumping versions (if you do, please update this section!).
+`proto/v1` and most of `proto/v2` come from
+[lbryio/types at 73610f6654a62337c8edede48118e83bcb38aadf](https://github.com/lbryio/types/tree/73610f6654a62337c8edede48118e83bcb38aadf).
+`result.proto` preserves the deployed SDK/Hub schema: field 22 is the double
+`trending_score`, and the existing Go package option is retained. The upstream
+file has a different type at that field number and must not replace it.
+
+The Hub's additional `hub.proto` is recovered from its existing generated
+descriptor because the corresponding source was not present upstream. Its
+messages and RPC signatures are checked against the captured descriptor.
+
+The compatibility fixtures under `tests/fixtures` were captured before
+regeneration with protobuf 3.20.3. Tests compare all deployed descriptor fields,
+round-trip old wire messages byte for byte, and preserve unknown fields. SDK
+schema tests additionally decode historical claims; wallet tests cover claim
+signatures. Updating a compiler or runtime must preserve these checks.

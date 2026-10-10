@@ -19,3 +19,16 @@ hashing gigabytes during every test. Starting with the legacy state after
 The old implementation then produces both digests and the state after
 appending `b'y' * 64`. These are synthetic intermediate states, not hashes
 of messages of the stated length.
+
+## Protobuf compatibility fixtures
+
+`protobuf-v1.pb` and `protobuf-v2.pb` capture the Hub's deployed generated
+descriptors at `267ea67cc5aa85e4092b6fdc9f05764a8564cbe6` using protobuf 3.20.3.
+They include the Hub service definition. `protobuf-wire.json` was serialized
+with protobuf 3.20.3 on Python 3.9 using these descriptors and includes every
+top-level message and top-level oneof alternative, repeated values, binary and
+non-ASCII values, and numeric boundary cases.
+
+Tests compare the regenerated schema and preserve exact serialized bytes,
+including an appended unknown field. Do not regenerate these compatibility
+fixtures using the new runtime.

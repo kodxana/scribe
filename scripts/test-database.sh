@@ -9,4 +9,4 @@ if [ -f /opt/binding-sha256.txt ]; then
     cp /opt/binding-sha256.txt /results/
 fi
 python -c 'import hub, rocksdb; print("Testing installed packages:", hub.__file__, rocksdb.__file__)'
-python -m pytest -v --junitxml=/results/tests.xml tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py tests/test_service.py tests/test_session_manager.py tests/test_sha256.py tests/test_jsonrpc.py
+python -m pytest -v --junitxml=/results/tests.xml tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py tests/test_service.py tests/test_session_manager.py tests/test_sha256.py tests/test_jsonrpc.py tests/test_protobuf.py

@@ -1,0 +1,120 @@
+// Recovered from the existing Hub generated descriptor; wire definitions unchanged.
+syntax = "proto3";
+
+package pb;
+
+import "result.proto";
+
+option go_package = "github.com/lbryio/hub/protobuf/go/pb";
+
+message EmptyMessage {
+}
+
+message ServerMessage {
+  string address = 1;
+  string port = 2;
+}
+
+message HelloMessage {
+  string port = 1;
+  string host = 2;
+  repeated .pb.ServerMessage servers = 3;
+}
+
+message InvertibleField {
+  bool invert = 1;
+  repeated string value = 2;
+}
+
+message StringValue {
+  string value = 1;
+}
+
+message BoolValue {
+  bool value = 1;
+}
+
+message UInt32Value {
+  uint32 value = 1;
+}
+
+message RangeField {
+  enum Op {
+    EQ = 0;
+    LTE = 1;
+    GTE = 2;
+    LT = 3;
+    GT = 4;
+  }
+  .pb.RangeField.Op op = 1;
+  repeated int32 value = 2;
+}
+
+message SearchRequest {
+  .pb.InvertibleField claim_id = 1;
+  .pb.InvertibleField channel_id = 2;
+  string text = 3;
+  int32 limit = 4;
+  repeated string order_by = 5;
+  uint32 offset = 6;
+  bool is_controlling = 7;
+  string last_take_over_height = 8;
+  string claim_name = 9;
+  string normalized_name = 10;
+  repeated .pb.RangeField tx_position = 11;
+  repeated .pb.RangeField amount = 12;
+  repeated .pb.RangeField timestamp = 13;
+  repeated .pb.RangeField creation_timestamp = 14;
+  repeated .pb.RangeField height = 15;
+  repeated .pb.RangeField creation_height = 16;
+  repeated .pb.RangeField activation_height = 17;
+  repeated .pb.RangeField expiration_height = 18;
+  repeated .pb.RangeField release_time = 19;
+  string short_url = 20;
+  string canonical_url = 21;
+  string title = 22;
+  string author = 23;
+  string description = 24;
+  repeated string claim_type = 25;
+  repeated .pb.RangeField repost_count = 26;
+  repeated string stream_type = 27;
+  repeated string media_type = 28;
+  repeated .pb.RangeField fee_amount = 29;
+  string fee_currency = 30;
+  repeated .pb.RangeField duration = 31;
+  string reposted_claim_id = 32;
+  repeated .pb.RangeField censor_type = 33;
+  string claims_in_channel = 34;
+  .pb.BoolValue is_signature_valid = 36;
+  repeated .pb.RangeField effective_amount = 37;
+  repeated .pb.RangeField support_amount = 38;
+  repeated .pb.RangeField trending_score = 39;
+  string tx_id = 43;
+  .pb.UInt32Value tx_nout = 44;
+  string signature = 45;
+  string signature_digest = 46;
+  string public_key_bytes = 47;
+  string public_key_id = 48;
+  repeated string any_tags = 49;
+  repeated string all_tags = 50;
+  repeated string not_tags = 51;
+  bool has_channel_signature = 52;
+  .pb.BoolValue has_source = 53;
+  int32 limit_claims_per_channel = 54;
+  repeated string any_languages = 55;
+  repeated string all_languages = 56;
+  bool remove_duplicates = 57;
+  bool no_totals = 58;
+  string sd_hash = 59;
+}
+
+service Hub {
+  rpc Search (.pb.SearchRequest) returns (.pb.Outputs) {}
+  rpc Ping (.pb.EmptyMessage) returns (.pb.StringValue) {}
+  rpc Hello (.pb.HelloMessage) returns (.pb.HelloMessage) {}
+  rpc AddPeer (.pb.ServerMessage) returns (.pb.StringValue) {}
+  rpc PeerSubscribe (.pb.ServerMessage) returns (.pb.StringValue) {}
+  rpc Version (.pb.EmptyMessage) returns (.pb.StringValue) {}
+  rpc Features (.pb.EmptyMessage) returns (.pb.StringValue) {}
+  rpc Broadcast (.pb.EmptyMessage) returns (.pb.UInt32Value) {}
+}
