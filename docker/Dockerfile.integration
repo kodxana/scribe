@@ -4,8 +4,11 @@ USER root
 WORKDIR /opt/hub
 COPY setup.py README.md ./
 COPY hub ./hub
-RUN --network=none python -m pip wheel --no-index --no-deps --no-build-isolation --wheel-dir /wheels . \
-    && python -m pip install --force-reinstall --no-index --no-deps /wheels/*.whl
+RUN --network=none python -m pip wheel --no-index --no-deps --no-build-isolation --wheel-dir /wheels .
+# The SDK baseline still installs the old binding. Remove its overlapping files
+# before installing this Hub wheel and resolving its new binding dependency.
+RUN python -m pip uninstall -y hub lbry-rocksdb \
+    && python -m pip install --no-build-isolation /wheels/*.whl
 
 COPY --from=binding / /opt/binding/
 RUN --network=none if [ -f /opt/binding/*.whl ]; then \

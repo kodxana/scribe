@@ -1,51 +1,61 @@
-## LBRY Hub
+# LBRY Hub NG
+
+LBRY Hub NG is a community-maintained fork of [LBRY Hub](https://github.com/lbryio/hub), originally developed by LBRY Inc. This project is maintained independently of LBRY Inc.; its changes and releases are community work, not official LBRY Inc. releases. Credit and license notices for the original authors are preserved.
+
+The repository has moved from `kodxana/scribe` to `kodxana/lbry-hub-ng`. The Python package remains `hub`; commands such as `scribe` and `herald` and existing database paths keep their names.
 
 This repo provides a python library, `hub`, for building services that use the processed data from the [LBRY blockchain](https://github.com/lbryio/lbrycrd) in an ongoing manner. Hub contains a set of three core executable services that are used together:
- * `scribe` ([hub.scribe.service](https://github.com/lbryio/hub/tree/master/hub/service.py)) - maintains a [rocksdb](https://github.com/lbryio/lbry-rocksdb) database containing the LBRY blockchain.
- * `herald` ([hub.herald.service](https://github.com/lbryio/hub/tree/master/hub/herald/service.py)) - an electrum server for thin-wallet clients (such as [lbry-sdk](https://github.com/lbryio/lbry-sdk)), provides an api for clients to use thin simple-payment-verification (spv) wallets and to resolve and search claims published to the LBRY blockchain. A drop in replacement port of herald written in go - [herald.go](https://github.com/lbryio/herald.go) is currently being worked on.
- * `scribe-elastic-sync` ([hub.elastic_sync.service](https://github.com/lbryio/hub/tree/master/hub/elastic_sync/service.py)) - a utility to maintain an elasticsearch database of metadata for claims in the LBRY blockchain
+ * `scribe` ([hub.scribe.service](hub/service.py)) - maintains a [rocksdb](https://github.com/kodxana/lbry-rocksdb-ng) database containing the LBRY blockchain.
+ * `herald` ([hub.herald.service](hub/herald/service.py)) - an electrum server for thin-wallet clients (such as [LBRY SDK NG](https://github.com/kodxana/lbry-sdk-ng)), provides an api for clients to use thin simple-payment-verification (spv) wallets and to resolve and search claims published to the LBRY blockchain.
+ * `scribe-elastic-sync` ([hub.elastic_sync.service](hub/elastic_sync/service.py)) - a utility to maintain an elasticsearch database of metadata for claims in the LBRY blockchain
 
-![](https://raw.githubusercontent.com/lbryio/hub/master/docs/diagram.png)
+![](docs/diagram.png)
 
 Features and overview of `hub` as a python library:
- * Uses Python 3.7-3.9 (3.10 probably works but hasn't yet been tested)
- * An interface developers may implement in order to build their own applications able to receive up-to-date blockchain data in an ongoing manner ([hub.service.BlockchainReaderService](https://github.com/lbryio/hub/tree/master/hub/service.py))
- * Protobuf schema for encoding and decoding metadata stored on the blockchain ([hub.schema](https://github.com/lbryio/hub/tree/master/hub/schema))
- * [Rocksdb 6.25.3](https://github.com/lbryio/lbry-rocksdb/) based database containing the blockchain data ([hub.db](https://github.com/lbryio/hub/tree/master/hub/db))
- * [A community driven performant trending algorithm](https://raw.githubusercontent.com/lbryio/hub/master/docs/trending%20algorithm.pdf) for searching claims ([code](https://github.com/lbryio/hub/blob/master/hub/elastic_sync/fast_ar_trending.py))
+ * Uses Python 3.9 for the current test baseline; newer interpreters are not yet validated for Hub
+ * An interface developers may implement in order to build their own applications able to receive up-to-date blockchain data in an ongoing manner ([hub.service.BlockchainReaderService](hub/service.py))
+ * Protobuf schema for encoding and decoding metadata stored on the blockchain ([hub.schema](hub/schema))
+ * [Rocksdb 6.25.3](https://github.com/kodxana/lbry-rocksdb-ng/) based database containing the blockchain data ([hub.db](hub/db))
+ * [A community driven performant trending algorithm](docs/trending%20algorithm.pdf) for searching claims ([code](hub/elastic_sync/fast_ar_trending.py))
 
 ## Installation
 
-Scribe may be run from source, a binary, or a docker image.
-Our [releases page](https://github.com/lbryio/hub/releases) contains pre-built binaries of the latest release, pre-releases, and past releases for macOS and Debian-based Linux.
-Prebuilt [docker images](https://hub.docker.com/r/lbry/hub/tags) are also available.
+Build this fork from source or build your own Docker image as described below. Community releases belong on [this repository's releases page](https://github.com/kodxana/lbry-hub-ng/releases). Historical [upstream binaries](https://github.com/lbryio/hub/releases) and [lbry/hub Docker images](https://hub.docker.com/r/lbry/hub/tags) do not include this fork's fixes.
 
-### Prebuilt docker image
+On Linux x86-64 with CPython 3.9, this fork installs `lbry-rocksdb-ng` 0.8.3
+from a versioned GitHub release with a SHA-256 pin. The wheel requires
+`manylinux_2_31` compatibility (including glibc 2.31 or newer); Alpine/musl is
+not supported. Other platforms and interpreters retain the legacy
+`lbry-rocksdb==0.8.2` requirement and are not newly validated by this change.
 
-`docker pull lbry/hub:master`
+Create a fresh virtual environment when upgrading. The old and new bindings
+both install `rocksdb` module files and must not coexist. Updating Hub in place
+does not automatically remove the old distribution. The database directory and
+RocksDB 6.25.3 engine are unchanged; do not delete database files when replacing
+the Python environment.
 
 ### Build your own docker image
 
 ```
-git clone https://github.com/lbryio/hub.git
-cd hub
-docker build -t lbry/hub:development .
+git clone https://github.com/kodxana/lbry-hub-ng.git
+cd lbry-hub-ng
+docker build -t lbry-hub-ng:development .
 ```
 
 ### Install from source
 
-Scribe has been tested with python 3.7-3.9. Higher versions probably work but have not yet been tested.
+Use Python 3.9 to match the current test baseline. RocksDB binding support on Python 3.13 does not establish Hub support on that version.
 
-1. clone the scribe repo
+1. clone the community repository
 ```
-git clone https://github.com/lbryio/hub.git
-cd hub
+git clone https://github.com/kodxana/lbry-hub-ng.git
+cd lbry-hub-ng
 ```
 2. make a virtual env
 ```
 python3.9 -m venv hub-venv
 ```
-3. from the virtual env, install scribe
+3. from the virtual env, install Hub
 ```
 source hub-venv/bin/activate
 pip install -e .
@@ -75,9 +85,9 @@ With options for high performance, if you have 64gb of memory and 12 cores, ever
 As of block 1147423 (4/21/22) the size of the scribe rocksdb database is 120GB and the size of the elasticsearch volume is 63GB.
 
 ### docker-compose
-The recommended way to run a scribe hub is with docker. See [this guide](https://github.com/lbryio/hub/blob/master/docs/cluster_guide.md) for instructions.
+The recommended way to run a scribe hub is with docker. See [this guide](docs/cluster_guide.md) for instructions.
 
-If you have the resources to run all of the services on one machine (at least 300gb of fast storage, preferably nvme, 64gb of RAM, 12 fast cores), see [this](https://github.com/lbryio/hub/blob/master/docs/docker_examples/docker-compose.yml) docker-compose example.
+If you have the resources to run all of the services on one machine (at least 300gb of fast storage, preferably nvme, 64gb of RAM, 12 fast cores), see [this](docs/docker_examples/docker-compose.yml) docker-compose example.
 
 ### From source
 
@@ -85,7 +95,7 @@ If you have the resources to run all of the services on one machine (at least 30
 
 #### Content blocking and filtering
 
-For various reasons it may be desirable to block or filtering content from claim search and resolve results, [here](https://github.com/lbryio/hub/blob/master/docs/blocking.md) are instructions for how to configure and use this feature as well as information about the recommended defaults.
+For various reasons it may be desirable to block or filtering content from claim search and resolve results, [here](docs/blocking.md) are instructions for how to configure and use this feature as well as information about the recommended defaults.
 
 #### Common options across `scribe`, `herald`, and `scribe-elastic-sync`:
   - `--db_dir` (required) Path of the directory containing lbry-rocksdb, set from the environment with `DB_DIRECTORY`
@@ -117,7 +127,9 @@ For various reasons it may be desirable to block or filtering content from claim
 
 ## Contributing
 
-Contributions to this project are welcome, encouraged, and compensated. For more details, please check [this](https://lbry.tech/contribute) link.
+Bug reports, tests, documentation and focused pull requests are welcome in [this repository](https://github.com/kodxana/lbry-hub-ng/issues). Include reproduction steps and run the relevant [tests](docs/testing.md). The original project's compensation program does not apply to this fork.
+
+Related community projects: [LBRY SDK NG](https://github.com/kodxana/lbry-sdk-ng) and [lbry-rocksdb-ng](https://github.com/kodxana/lbry-rocksdb-ng).
 
 ## License
 
@@ -125,8 +137,8 @@ This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 
 ## Security
 
-We take security seriously. Please contact security@lbry.com regarding any security issues. [Our PGP key is here](https://lbry.com/faq/pgp-key) if you need it.
+Contact [@kodxana](https://github.com/kodxana) to arrange private disclosure before sharing vulnerability details. Keep public issues free of exploit details and private data. LBRY Inc. email addresses are not support contacts for this fork.
 
 ## Contact
 
-The primary contact for this project is [@jackrobison](mailto:jackrobison@lbry.com).
+The fork is maintained by [@kodxana](https://github.com/kodxana) and community contributors. Use this repository's issues for general questions and bug reports.

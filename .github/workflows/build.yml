@@ -30,8 +30,8 @@ jobs:
         if: matrix.binding == 'maintained'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: kodxana/lbry-rocksdb
-          ref: 59cb269cc18e64991174f05a1fa9e9de25fbc2dd
+          repository: kodxana/lbry-rocksdb-ng
+          ref: c540bbc9502293101dc29a8535443a69bcf0b821
           path: .ci/rocksdb
           submodules: true
           persist-credentials: false
@@ -76,8 +76,8 @@ jobs:
       - name: Check out the matching SDK
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: kodxana/lbry-sdk
-          ref: 418cd5fac4e60be69b456c9d97a5e8cabb21c053
+          repository: kodxana/lbry-sdk-ng
+          ref: 717ab172b8951aacb17dc150188e57b07407688e
           path: .ci/sdk
           persist-credentials: false
       - name: Download the tested binding

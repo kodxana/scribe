@@ -2,14 +2,14 @@
 set -eu
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-    echo 'Usage: sh scripts/test-integration.sh <SDK checkout> [path/to/lbry_rocksdb.whl]' >&2
+    echo 'Usage: sh scripts/test-integration.sh <SDK checkout> [path/to/lbry_rocksdb_ng.whl]' >&2
     exit 2
 fi
 sdk_dir=$(CDPATH= cd -- "$1" && pwd)
 wheel=${2:-}
 case "$wheel" in
-    ''|*/lbry_rocksdb-*.whl|lbry_rocksdb-*.whl) ;;
-    *) echo 'Expected an lbry_rocksdb wheel.' >&2; exit 2 ;;
+    ''|*/lbry_rocksdb_ng-*.whl|lbry_rocksdb_ng-*.whl) ;;
+    *) echo 'Expected an lbry_rocksdb_ng wheel.' >&2; exit 2 ;;
 esac
 if [ -n "$wheel" ] && [ ! -f "$wheel" ]; then
     echo "Wheel not found: $wheel" >&2

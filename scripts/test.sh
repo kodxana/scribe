@@ -2,13 +2,13 @@
 set -eu
 
 if [ "$#" -gt 1 ]; then
-    echo 'Usage: sh scripts/test.sh [path/to/lbry_rocksdb.whl]' >&2
+    echo 'Usage: sh scripts/test.sh [path/to/lbry_rocksdb_ng.whl]' >&2
     exit 2
 fi
 wheel=${1:-}
 case "$wheel" in
-    ''|*/lbry_rocksdb-*.whl|lbry_rocksdb-*.whl) ;;
-    *) echo 'Expected an lbry_rocksdb wheel.' >&2; exit 2 ;;
+    ''|*/lbry_rocksdb_ng-*.whl|lbry_rocksdb_ng-*.whl) ;;
+    *) echo 'Expected an lbry_rocksdb_ng wheel.' >&2; exit 2 ;;
 esac
 if [ -n "$wheel" ] && [ ! -f "$wheel" ]; then
     echo "Wheel not found: $wheel" >&2
