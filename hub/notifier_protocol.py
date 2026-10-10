@@ -6,19 +6,24 @@ from typing import Deque, Tuple
 
 
 log = logging.getLogger(__name__)
+_NOTIFICATION = struct.Struct('>Q32s')
 
 
 class ElasticNotifierProtocol(asyncio.Protocol):
     """notifies the reader when ES has written updates"""
 
-    def __init__(self, listeners):
+    def __init__(self, listeners, get_latest=None):
         self._listeners = listeners
+        self._get_latest = get_latest
         self.transport: typing.Optional[asyncio.Transport] = None
 
     def connection_made(self, transport):
         self.transport = transport
         self._listeners.append(self)
         log.info("got es notifier connection")
+        latest = self._get_latest() if self._get_latest is not None else None
+        if latest is not None:
+            self.send_height(*latest)
 
     def connection_lost(self, exc) -> None:
         self._listeners.remove(self)
@@ -26,7 +31,7 @@ class ElasticNotifierProtocol(asyncio.Protocol):
 
     def send_height(self, height: int, block_hash: bytes):
         log.info("notify es update '%s'", height)
-        self.transport.write(struct.pack(b'>Q32s', height, block_hash))
+        self.transport.write(_NOTIFICATION.pack(height, block_hash))
 
 
 class ElasticNotifierClientProtocol(asyncio.Protocol):
@@ -37,6 +42,7 @@ class ElasticNotifierClientProtocol(asyncio.Protocol):
         self.notifications = notifications
         self.transport: typing.Optional[asyncio.Transport] = None
         self._notifier_hosts = notifier_hosts
+        self._buffer = bytearray()
         self.lost_connection = asyncio.Event()
         self.lost_connection.set()
 
@@ -64,12 +70,12 @@ class ElasticNotifierClientProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc) -> None:
         self.transport = None
+        self._buffer.clear()
         self.lost_connection.set()
 
     def data_received(self, data: bytes) -> None:
-        try:
-            height, block_hash = struct.unpack(b'>Q32s', data)
-        except:
-            log.exception("failed to decode %s", (data or b'').hex())
-            raise
-        self.notifications.put_nowait((height, block_hash))
+        self._buffer.extend(data)
+        end = len(self._buffer) // _NOTIFICATION.size * _NOTIFICATION.size
+        for offset in range(0, end, _NOTIFICATION.size):
+            self.notifications.put_nowait(_NOTIFICATION.unpack_from(self._buffer, offset))
+        del self._buffer[:end]

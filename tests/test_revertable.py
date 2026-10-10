@@ -1,6 +1,9 @@
 import unittest
+import hashlib
+import json
 import tempfile
 import shutil
+from pathlib import Path
 from hub.db.revertable import RevertableOpStack, RevertableDelete, RevertablePut, OpStackIntegrity
 from hub.db.prefixes import ClaimToTXOPrefixRow, PrefixDB
 
@@ -122,6 +125,39 @@ class TestRevertablePrefixDB(unittest.TestCase):
         self.db.close()
         self.db = None
         self.db = PrefixDB(self.tmp_dir, max_open_files=32)
+
+    def test_legacy_history_hash_survives_update_reopen_and_rollback(self):
+        vectors = json.loads((Path(__file__).parent / 'fixtures' / 'sha256-legacy.json').read_text())
+        row = self.db.hashX_history_hasher
+        for index, vector in enumerate(vectors):
+            self.db.stash_raw_put(row.pack_key(bytes([index]) * 11), bytes.fromhex(vector['state']))
+        self.db.commit(100, b'a' * 32)
+        self.reopen()
+
+        row = self.db.hashX_history_hasher
+        for index, vector in enumerate(vectors):
+            address = bytes([index]) * 11
+            original = row.get(address).hasher
+            self.assertEqual(original.digest().hex(), vector['digest'])
+            row.stash_delete((address,), (original,))
+            original.update(b' continuation')
+            row.stash_put((address,), (original,))
+        self.db.commit(101, b'b' * 32)
+        self.reopen()
+
+        for index, vector in enumerate(vectors):
+            hasher = self.db.hashX_history_hasher.get(bytes([index]) * 11).hasher
+            self.assertEqual(hasher.digest().hex(), vector['continued_digest'])
+            hasher.update(b' more')
+            self.assertEqual(hasher.digest(), hashlib.sha256(
+                bytes.fromhex(vector['data']) + b' continuation more').digest())
+
+        self.db.rollback(101, b'b' * 32)
+        self.reopen()
+        for index, vector in enumerate(vectors):
+            row = self.db.hashX_history_hasher
+            self.assertEqual(row.get(bytes([index]) * 11, deserialize_value=False), bytes.fromhex(vector['state']))
+            self.assertEqual(row.get(bytes([index]) * 11).hasher.digest().hex(), vector['digest'])
 
     def test_rollback_after_reopen(self):
         name = 'persisted-claim'

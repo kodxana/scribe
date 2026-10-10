@@ -14,6 +14,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  schema:
+    name: Generated schemas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: '0.12.24'
+          python-version: '3.13.15'
+          activate-environment: true
+      - run: uv pip install -r hub/schema/requirements.txt
+      - run: python scripts/regenerate_schema.py --check
+
+  hash-state:
+    name: Saved hash state / Python ${{ matrix.python }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.13']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+      - name: Check saved states without the Hub runtime dependencies
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+        run: |
+          uv venv --python "$PYTHON_VERSION" .venv
+          uv pip install --python .venv/bin/python sha256==1.0
+          .venv/bin/python -m unittest tests.test_sha256 -v
+
   database:
     name: Database / ${{ matrix.binding }} RocksDB
     runs-on: ubuntu-24.04
@@ -31,7 +68,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kodxana/lbry-rocksdb-ng
-          ref: c540bbc9502293101dc29a8535443a69bcf0b821
+          ref: cdbe008312a191b3099065a94c470818b10d6d9d
           path: .ci/rocksdb
           submodules: true
           persist-credentials: false
@@ -39,7 +76,7 @@ jobs:
         if: matrix.binding == 'maintained'
         env:
           TEST_OUTPUT_DIR: ${{ github.workspace }}/ci-results/rocksdb
-        run: sh .ci/rocksdb/scripts/test.sh 3.9
+        run: sh .ci/rocksdb/scripts/test.sh 3.13
       - name: Test the installed Hub package
         env:
           BINDING: ${{ matrix.binding }}
@@ -77,7 +114,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kodxana/lbry-sdk-ng
-          ref: c85b9d4767db8226896a8ddfc6acd80db14614ca
+          ref: 89c4029bf54671148ecfccd47a6f76646f090cb1
           path: .ci/sdk
           persist-credentials: false
       - name: Download the tested binding

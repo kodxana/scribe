@@ -73,7 +73,7 @@ class Env:
     @classmethod
     def string_amount(cls, envvar, default):
         value = os.environ.get(envvar, default)
-        amount_pattern = re.compile("[0-9]{0,10}(\.[0-9]{1,8})?")
+        amount_pattern = re.compile(r"[0-9]{0,10}(\.[0-9]{1,8})?")
         if len(value) > 0 and not amount_pattern.fullmatch(value):
             raise cls.Error(f'{value} is not a valid amount for {envvar}')
         return value

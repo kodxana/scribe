@@ -3,9 +3,14 @@ import gc
 import logging
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, Mock, patch
+from collections import deque
+from elasticsearch import ConnectionError as ElasticConnectionError
 
 from hub.elastic_sync.service import ElasticSyncService
 from hub.service import BlockchainService
+from hub.common import RPCError
+from hub.herald.search import SearchIndex
+from hub.herald.session import LBRYElectrumX
 
 
 class ServiceShutdownTests(IsolatedAsyncioTestCase):
@@ -141,3 +146,57 @@ class ServiceShutdownTests(IsolatedAsyncioTestCase):
         await service.stop_index(delete=True)
         client.indices.delete.assert_awaited_once()
         client.close.assert_awaited_once()
+
+
+class SearchAvailabilityTests(IsolatedAsyncioTestCase):
+    async def test_search_during_disconnect_returns_retryable_rpc_error(self):
+        session = object.__new__(LBRYElectrumX)
+        session.session_manager = Mock()
+        session.session_manager.search_index = SearchIndex(Mock(), 'temporary-')
+        with self.assertRaises(RPCError) as error:
+            await session.claimtrie_search(order_by=['height'])
+        self.assertEqual(error.exception.code, -32001)
+        self.assertEqual(error.exception.message, 'claim search is temporarily unavailable')
+
+    async def test_failed_search_connection_returns_retryable_rpc_error(self):
+        session = object.__new__(LBRYElectrumX)
+        session.session_manager = Mock()
+        session.session_manager.search_index.cached_search = AsyncMock(
+            side_effect=ElasticConnectionError('N/A', 'connection closed', None)
+        )
+        with self.assertRaises(RPCError) as error:
+            await session.claimtrie_search(order_by=['height'])
+        self.assertEqual(error.exception.code, -32001)
+
+    async def test_search_becomes_ready_after_index_setup_and_clears_on_stop(self):
+        index = SearchIndex(Mock(), 'temporary-', elastic_services=deque([
+            (('localhost', 9200), ('localhost', 19081))
+        ]))
+        sync_client, search_client = Mock(), Mock()
+        sync_client.cluster.health = AsyncMock()
+        sync_client.indices.create = AsyncMock(return_value={'acknowledged': True})
+        configuring = asyncio.Event()
+        allow_setup = asyncio.Event()
+
+        async def configure(*args, **kwargs):
+            configuring.set()
+            await allow_setup.wait()
+
+        sync_client.indices.put_template = AsyncMock(side_effect=configure)
+        sync_client.close = AsyncMock()
+        search_client.close = AsyncMock()
+        with patch('hub.herald.search.AsyncElasticsearch', side_effect=[sync_client, search_client]):
+            starting = asyncio.create_task(index.start())
+            try:
+                await asyncio.wait_for(configuring.wait(), 1)
+                self.assertFalse(index.ready.is_set())
+                with self.assertRaises(ElasticConnectionError):
+                    await index.cached_search({})
+            finally:
+                allow_setup.set()
+                await asyncio.wait_for(starting, 1)
+        self.assertTrue(index.ready.is_set())
+        await index.stop()
+        self.assertFalse(index.ready.is_set())
+        sync_client.close.assert_awaited_once()
+        search_client.close.assert_awaited_once()

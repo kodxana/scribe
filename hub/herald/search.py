@@ -44,6 +44,7 @@ class SearchIndex:
         self.search_cache = LRUCache(2 ** 17)
         self._elastic_services = elastic_services
         self.lost_connection = asyncio.Event()
+        self.ready = asyncio.Event()
 
     async def get_index_version(self) -> int:
         try:
@@ -75,15 +76,18 @@ class SearchIndex:
         acked = res.get('acknowledged', False)
         if acked:
             await self.set_index_version(self.VERSION)
+            self.ready.set()
             return acked
         index_version = await self.get_index_version()
         if index_version != self.VERSION:
             self.logger.error("es search index has an incompatible version: %s vs %s", index_version, self.VERSION)
             raise IndexVersionMismatch(index_version, self.VERSION)
         await self.sync_client.indices.refresh(self.index)
+        self.ready.set()
         return True
 
     async def stop(self):
+        self.ready.clear()
         clients = [c for c in (self.sync_client, self.search_client) if c is not None]
         self.sync_client, self.search_client = None, None
         if clients:
@@ -92,6 +96,11 @@ class SearchIndex:
     def clear_caches(self):
         self.search_cache.clear()
         self.claim_cache.clear()
+
+    def _get_search_client(self):
+        if not self.ready.is_set() or self.search_client is None:
+            raise ConnectionError('N/A', 'claim search is temporarily unavailable', None)
+        return self.search_client
 
     def _make_resolve_result(self, es_result):
         channel_hash = es_result['channel_hash']
@@ -146,6 +155,7 @@ class SearchIndex:
         )
 
     async def cached_search(self, kwargs):
+        self._get_search_client()
         total_referenced = []
         cache_item = ResultCacheItem.from_cache(str(kwargs), self.search_cache)
         if cache_item.result is not None:
@@ -179,7 +189,7 @@ class SearchIndex:
     async def populate_claim_cache(self, *claim_ids):
         missing = [claim_id for claim_id in claim_ids if self.claim_cache.get(claim_id) is None]
         if missing:
-            results = await self.search_client.mget(
+            results = await self._get_search_client().mget(
                 index=self.index, body={"ids": missing}
             )
             for result in expand_result(filter(lambda doc: doc['found'], results["docs"])):
@@ -208,7 +218,7 @@ class SearchIndex:
                     reordered_hits = cache_item.result
                 else:
                     query = expand_query(**kwargs)
-                    es_resp = await self.search_client.search(
+                    es_resp = await self._get_search_client().search(
                         query, index=self.index, track_total_hits=False,
                         timeout=f'{int(1000*self.search_timeout)}ms',
                         _source_includes=['_id', 'channel_id', 'reposted_claim_id', 'creation_height']

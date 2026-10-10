@@ -14,7 +14,7 @@ from asyncio import Event, sleep
 from collections import defaultdict, namedtuple
 from contextlib import suppress
 from functools import partial
-from elasticsearch import ConnectionTimeout
+from elasticsearch import ConnectionTimeout, ConnectionError as ElasticConnectionError
 from prometheus_client import Counter, Info, Histogram, Gauge
 from hub.schema.result import Outputs
 from hub.error import ResolveCensoredError, TooManyClaimSearchParametersError
@@ -294,7 +294,7 @@ class SessionManager:
 
 
     async def _close_servers(self, kinds):
-        """Close the servers of the given kinds (TCP etc.)."""
+        """Stop accepting connections without waiting for existing sessions."""
         if kinds:
             self.logger.info('closing down {} listening servers'
                              .format(', '.join(kinds)))
@@ -302,7 +302,6 @@ class SessionManager:
             server = self.servers.pop(kind, None)
             if server:
                 server.close()
-                await server.wait_closed()
 
     async def _manage_servers(self):
         paused = False
@@ -631,12 +630,16 @@ class SessionManager:
             self.logger.exception("hub server died")
             raise
         finally:
+            servers = list(self.servers.values())
             try:
                 await self._close_servers(list(self.servers.keys()))
             finally:
                 try:
                     self.logger.info("disconnect %i sessions", len(self.sessions))
                     await self._close_sessions(list(self.sessions.values()), force_after=1)
+                    # Python 3.12+ waits for client connections in wait_closed().
+                    # Close them first; pausing listeners must also leave them usable.
+                    await asyncio.gather(*(server.wait_closed() for server in servers))
                 finally:
                     await self.stop_other()
                     # The owning service cancels serve() when this is signaled.
@@ -1305,6 +1308,8 @@ class LBRYElectrumX(asyncio.Protocol):
         except ConnectionTimeout:
             self.session_manager.search_index.timeout_counter.inc()
             raise RPCError(JSONRPC.QUERY_TIMEOUT, 'query timed out')
+        except ElasticConnectionError:
+            raise RPCError(JSONRPC.SEARCH_UNAVAILABLE, 'claim search is temporarily unavailable')
         except TooManyClaimSearchParametersError as err:
             await asyncio.sleep(2)
             self.logger.warning("Got an invalid query from %s, for %s with more than %d elements.",

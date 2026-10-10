@@ -1,4 +1,4 @@
-FROM python:3.9-bullseye@sha256:5bd3c295ffab8b738108c7705052086d78b036078d5605dfc51e328ab758cc07
+FROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 COPY docker/test-requirements.txt /opt/test-requirements.txt
@@ -20,7 +20,11 @@ RUN --network=none if [ -f /opt/binding/*.whl ]; then \
     && python -m pip check
 
 WORKDIR /opt/check
-COPY tests/__init__.py tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py tests/test_service.py tests/test_session_manager.py ./tests/
+COPY tests/__init__.py tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py tests/test_service.py tests/test_session_manager.py tests/test_sha256.py ./tests/
+COPY tests/fixtures ./tests/fixtures
+COPY tests/test_jsonrpc.py ./tests/
+COPY tests/test_notifier_protocol.py ./tests/
+COPY tests/test_protobuf.py ./tests/
 COPY scripts/test-database.sh ./test-database.sh
 RUN useradd --create-home --uid 1000 tester \
     && mkdir /results \

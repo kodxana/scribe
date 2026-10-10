@@ -18,8 +18,8 @@ setup(
     long_description_content_type="text/markdown",
     keywords="lbry protocol electrum spv",
     license='MIT',
-    python_requires='>=3.7',
-    packages=find_packages(exclude=('tests',)),
+    python_requires='>=3.13,<3.14',
+    packages=find_packages(exclude=('tests', 'tests.*')),
     zip_safe=False,
     entry_points={
         'console_scripts': [
@@ -29,33 +29,29 @@ setup(
         ],
     },
     install_requires=[
-        'aiohttp==3.7.4',
-        'certifi>=2021.10.08',
-        'colorama==0.3.7',
-        'cffi==1.13.2',
-        'protobuf==3.20.3',
-        'msgpack==0.6.1',
-        'prometheus_client==0.7.1',
-        'coincurve==15.0.0',
+        'aiohttp==3.14.4',
+        'asn1crypto==1.5.1',
+        'certifi==2026.7.22',
+        'colorama==0.4.6',
+        'cffi==2.1.1',
+        'protobuf==7.36.2',
+        'msgpack==1.2.3',
+        'prometheus_client==0.26.0',
+        'coincurve==21.0.0',
         'pbkdf2==1.3',
-        'attrs==18.2.0',
-        'elasticsearch==7.10.1',
-        'hachoir==3.1.2',
-        'filetype==1.0.9',
-        'grpcio==1.38.0',
+        'attrs==26.1.0',
+        'elasticsearch==7.17.13',
+        'hachoir==3.4.0',
+        'filetype==1.2.0',
+        'grpcio==1.84.0',
         'lbry-rocksdb-ng @ https://github.com/kodxana/lbry-rocksdb-ng/releases/download/v0.8.3/'
-        'lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl'
-        '#sha256=c0313ce0c346b441f4e58705adab16cf27ec189e0d05897adbcb97ca6273e7a2 ; '
-        'sys_platform == "linux" and platform_machine == "x86_64" and '
-        'python_version == "3.9" and implementation_name == "cpython"',
-        'lbry-rocksdb==0.8.2 ; '
-        'sys_platform != "linux" or platform_machine != "x86_64" or '
-        'python_version != "3.9" or implementation_name != "cpython"',
-        'ujson==5.4.0',
-        'rehash==1.0.0'
+        'lbry_rocksdb_ng-0.8.3-cp313-cp313-manylinux_2_35_x86_64.whl'
+        '#sha256=9e905f44895e0815ef6e803da964ee648cfd970cc2621003a92bc822875e3e72',
+        'ujson==6.0.0',
+        'sha256==1.0'
     ],
     extras_require={
-        'lint': ['pylint==2.10.0'],
+        'lint': ['pylint==4.1.2'],
         'test': ['coverage'],
     },
     classifiers=[

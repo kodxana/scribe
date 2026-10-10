@@ -20,6 +20,7 @@ class JSONRPC:
     INVALID_ARGS = -32602
     INTERNAL_ERROR = -32603
     QUERY_TIMEOUT = -32000
+    SEARCH_UNAVAILABLE = -32001
 
     # Codes specific to this library
     ERROR_CODE_UNAVAILABLE = -100
@@ -438,8 +439,8 @@ class JSONRPCAutoDetect(JSONRPCv2):
 
 
 class ResultEvent(asyncio.Event):
-    def __init__(self, loop=None):
-        super().__init__(loop=loop)
+    def __init__(self):
+        super().__init__()
         self.result = None
 
 
