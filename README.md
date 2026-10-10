@@ -20,6 +20,19 @@ Scribe may be run from source, a binary, or a docker image.
 Our [releases page](https://github.com/lbryio/hub/releases) contains pre-built binaries of the latest release, pre-releases, and past releases for macOS and Debian-based Linux.
 Prebuilt [docker images](https://hub.docker.com/r/lbry/hub/tags) are also available.
 
+To use this fork's changes, build from source or build your own image below.
+On Linux x86-64 with CPython 3.9, this fork installs `lbry-rocksdb-ng` 0.8.3
+from a versioned GitHub release with a SHA-256 pin. The wheel requires
+`manylinux_2_31` compatibility (including glibc 2.31 or newer); Alpine/musl is
+not supported. Other platforms and interpreters retain the legacy
+`lbry-rocksdb==0.8.2` requirement and are not newly validated by this change.
+
+Create a fresh virtual environment when upgrading. The old and new bindings
+both install `rocksdb` module files and must not coexist. Updating Hub in place
+does not automatically remove the old distribution. The database directory and
+RocksDB 6.25.3 engine are unchanged; do not delete database files when replacing
+the Python environment.
+
 ### Prebuilt docker image
 
 `docker pull lbry/hub:master`
@@ -27,8 +40,8 @@ Prebuilt [docker images](https://hub.docker.com/r/lbry/hub/tags) are also availa
 ### Build your own docker image
 
 ```
-git clone https://github.com/lbryio/hub.git
-cd hub
+git clone https://github.com/kodxana/scribe.git
+cd scribe
 docker build -t lbry/hub:development .
 ```
 
@@ -38,8 +51,8 @@ Scribe has been tested with python 3.7-3.9. Higher versions probably work but ha
 
 1. clone the scribe repo
 ```
-git clone https://github.com/lbryio/hub.git
-cd hub
+git clone https://github.com/kodxana/scribe.git
+cd scribe
 ```
 2. make a virtual env
 ```

@@ -43,7 +43,14 @@ setup(
         'hachoir==3.1.2',
         'filetype==1.0.9',
         'grpcio==1.38.0',
-        'lbry-rocksdb==0.8.2',
+        'lbry-rocksdb-ng @ https://github.com/kodxana/lbry-rocksdb/releases/download/v0.8.3/'
+        'lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl'
+        '#sha256=c0313ce0c346b441f4e58705adab16cf27ec189e0d05897adbcb97ca6273e7a2 ; '
+        'sys_platform == "linux" and platform_machine == "x86_64" and '
+        'python_version == "3.9" and implementation_name == "cpython"',
+        'lbry-rocksdb==0.8.2 ; '
+        'sys_platform != "linux" or platform_machine != "x86_64" or '
+        'python_version != "3.9" or implementation_name != "cpython"',
         'ujson==5.4.0',
         'rehash==1.0.0'
     ],

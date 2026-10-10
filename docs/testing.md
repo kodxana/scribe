@@ -28,6 +28,13 @@ records across reopening, and secondary readers catching up after commits and
 rollbacks. The undo test helper applies upstream's staged operations before
 checking the resulting database.
 
+The installed-distribution tests verify that the maintained binding is the only
+RocksDB distribution present and that Hub's package metadata selects exactly one
+binding for each supported selection case. Linux x86-64 CPython 3.9 selects the
+GitHub wheel; other interpreters, operating systems and architectures retain the
+legacy requirement. This checks dependency selection, not runtime support for
+those legacy environments.
+
 The 39 cases in `tests/test_migrations.py` cover startup upgrades from every
 supported version (7 through 11) to version 12, with address indexing enabled
 and disabled. Small fixtures encode legacy keys and 94-, 98-, and 102-byte state
@@ -59,13 +66,16 @@ shared protobuf 3.20.3 requirement:
 
 ```sh
 git clone https://github.com/kodxana/lbry-sdk.git .ci/sdk
-git -C .ci/sdk checkout 418cd5fac4e60be69b456c9d97a5e8cabb21c053
+git -C .ci/sdk checkout 717ab172b8951aacb17dc150188e57b07407688e
 sh scripts/test-integration.sh .ci/sdk
 ```
 
 CI pins this SDK revision. The runner builds the SDK's test image, which
 downloads and checksums its regtest binaries, then installs this checkout's Hub
-wheel over the SDK's pinned Hub. Tests import the installed Hub from a separate
+wheel over the SDK's pinned Hub. During this image build, it uninstalls the old
+Hub and `lbry-rocksdb` distributions before resolving this Hub wheel's
+dependencies. This prevents the old and new bindings from owning the same files.
+Tests import the installed Hub from a separate
 working directory. They use the SDK's maintained `CommandTestCase` and async
 runner; the unused, stale copy in `tests/testcase.py` has been removed.
 
@@ -91,28 +101,31 @@ exit. Both runners preserve nonzero test exits.
 
 ## Compare the maintained RocksDB binding
 
-By default both runners install `lbry-rocksdb==0.8.2` from PyPI. To test a
+By default both runners install the hash-pinned `lbry-rocksdb-ng` 0.8.3 wheel
+from [the GitHub release](https://github.com/kodxana/lbry-rocksdb/releases/tag/v0.8.3).
+To test a
 locally built Linux CPython 3.9 wheel, pass its path:
 
 ```sh
-sh scripts/test.sh /path/to/lbry_rocksdb-0.8.2-cp39-cp39-linux_x86_64.whl
-sh scripts/test-integration.sh .ci/sdk /path/to/lbry_rocksdb-0.8.2-cp39-cp39-linux_x86_64.whl
+sh scripts/test.sh /path/to/lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl
+sh scripts/test-integration.sh .ci/sdk /path/to/lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl
 ```
 
 Results use the `local-wheel` suffix and record the supplied wheel's SHA-256.
 Installation is offline and does not replace other dependencies.
 
-CI runs both suites with both bindings. Its maintained binding comes from
-[`kodxana/lbry-rocksdb` at `59cb269cc18e64991174f05a1fa9e9de25fbc2dd`](https://github.com/kodxana/lbry-rocksdb/commit/59cb269cc18e64991174f05a1fa9e9de25fbc2dd),
+CI runs both suites with the published release and a binding rebuilt from
+[`kodxana/lbry-rocksdb` at `c540bbc9502293101dc29a8535443a69bcf0b821`](https://github.com/kodxana/lbry-rocksdb/commit/c540bbc9502293101dc29a8535443a69bcf0b821),
 which releases live iterators and snapshots safely when a database closes.
 That checkout builds its pinned native libraries and passes its binding suite
 before the wheel reaches the Hub database job. The resolve job downloads and
 tests that same wheel artifact. These workflows do not publish packages.
 
-The default dependency in `setup.py` still selects PyPI's 0.8.2 wheel, which
-does not include those close fixes. The maintained wheel must be supplied
-explicitly until a versioned release is available; updating the CI pin alone
-does not change ordinary Hub installations.
+Normal Hub installs now receive the same release on the tested Linux x86-64
+CPython 3.9 platform, with `manylinux_2_31` system-library requirements. Other
+platforms retain the old requirement. Start with a fresh environment when
+switching distributions; their `rocksdb` module files overlap. Neither the
+database directory name nor the database format changes.
 
 ## Scope
 
