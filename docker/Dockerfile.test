@@ -20,7 +20,7 @@ RUN --network=none if [ -f /opt/binding/*.whl ]; then \
     && python -m pip check
 
 WORKDIR /opt/check
-COPY tests/__init__.py tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py ./tests/
+COPY tests/__init__.py tests/test_revertable.py tests/test_migrations.py tests/test_distribution.py tests/test_service.py ./tests/
 COPY scripts/test-database.sh ./test-database.sh
 RUN useradd --create-home --uid 1000 tester \
     && mkdir /results \

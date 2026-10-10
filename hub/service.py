@@ -66,10 +66,21 @@ class BlockchainService:
 
     async def _stop_cancellable_tasks(self):
         async with self.lock:
-            while self.cancellable_tasks:
-                t = self.cancellable_tasks.pop()
-                if not t.done():
-                    t.cancel()
+            tasks = self.cancellable_tasks[:]
+            self.cancellable_tasks.clear()
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+        # Task cleanup may need the lock. Finish it before closing shared resources.
+        await asyncio.gather(*tasks, return_exceptions=True)
+        for task in tasks:
+            if task.cancelled():
+                continue
+            error = task.exception()
+            if error is not None:
+                self.log.error("background task failed during shutdown", exc_info=(
+                    type(error), error, error.__traceback__
+                ))
 
     async def start(self):
         if not self._executor:
