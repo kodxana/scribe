@@ -19,7 +19,7 @@ setup(
     keywords="lbry protocol electrum spv",
     license='MIT',
     python_requires='>=3.13,<3.14',
-    packages=find_packages(exclude=('tests',)),
+    packages=find_packages(exclude=('tests', 'tests.*')),
     zip_safe=False,
     entry_points={
         'console_scripts': [

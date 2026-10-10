@@ -1,0 +1,4 @@
+include README.md LICENSE
+recursive-include hub *.py *.txt
+recursive-include hub/schema *.proto *.md Makefile
+include scripts/regenerate_schema.py
