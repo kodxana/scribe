@@ -42,6 +42,13 @@ check that failed tasks are reported, normal shutdown preserves the search
 index, and explicit index deletion waits for reader cleanup. The SDK separately
 tests this ordering against a real temporary Elasticsearch index in regtest.
 
+Session-manager tests in `tests/test_session_manager.py` cover cancellation of
+maintenance loops and in-progress connection closes, failure of either loop,
+partial startup, and failures while closing listeners or individual sessions.
+An exited maintenance loop requests service shutdown after cleanup; normal
+cancellation stays quiet. Slow task cleanup is not canceled a second time.
+Connection-close errors are logged without skipping other connections.
+
 The 39 cases in `tests/test_migrations.py` cover startup upgrades from every
 supported version (7 through 11) to version 12, with address indexing enabled
 and disabled. Small fixtures encode legacy keys and 94-, 98-, and 102-byte state
@@ -73,15 +80,16 @@ shared protobuf 3.20.3 requirement:
 
 ```sh
 git clone https://github.com/kodxana/lbry-sdk-ng.git .ci/sdk
-git -C .ci/sdk checkout 717ab172b8951aacb17dc150188e57b07407688e
+git -C .ci/sdk checkout c85b9d4767db8226896a8ddfc6acd80db14614ca
 sh scripts/test-integration.sh .ci/sdk
 ```
 
 CI pins this SDK revision. The runner builds the SDK's test image, which
 downloads and checksums its regtest binaries, then installs this checkout's Hub
-wheel over the SDK's pinned Hub. During this image build, it uninstalls the old
-Hub and `lbry-rocksdb` distributions before resolving this Hub wheel's
-dependencies. This prevents the old and new bindings from owning the same files.
+wheel over the SDK's pinned Hub. During this image build, it replaces the Hub
+distribution and removes `lbry-rocksdb` if present before resolving this Hub
+wheel's dependencies. This prevents the old and new bindings from owning the
+same files. The pinned SDK includes ordered search-index shutdown during teardown.
 Tests import the installed Hub from a separate
 working directory. They use the SDK's maintained `CommandTestCase` and async
 runner; the unused, stale copy in `tests/testcase.py` has been removed.
@@ -94,6 +102,11 @@ The generated message definitions are unchanged.
 All 37 tests in `tests/test_resolve_command.py` run, covering claim resolution,
 channel/short-ID handling, activation delays, supports, takeovers, expiration,
 trending, and chain reorgs.
+
+The same runner also tests session shutdown against a real local TCP connection
+in `tests/test_session_lifecycle.py`. It requests a server banner, stops the
+regtest node, and checks that the client disconnects, maintenance tasks finish,
+and the session and listener registries are empty.
 
 Elasticsearch 7.12.1 is pinned by image digest. Its container has no external
 network, uses two CPUs and 2 GiB, and publishes no ports. The test container

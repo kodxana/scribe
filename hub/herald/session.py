@@ -346,6 +346,16 @@ class SessionManager:
                     return session
         return None
 
+    async def _close_sessions(self, sessions, force_after):
+        results = await asyncio.gather(
+            *(session.close(force_after=force_after) for session in sessions), return_exceptions=True
+        )
+        for session, result in zip(sessions, results):
+            if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                self.logger.error('failed to close session %s', session.session_id, exc_info=(
+                    type(result), result, result.__traceback__
+                ))
+
     async def _for_each_session(self, session_ids, operation):
         if not isinstance(session_ids, list):
             raise RPCError(BAD_REQUEST, 'expected a list of session IDs')
@@ -372,10 +382,7 @@ class SessionManager:
                                  for session in stale_sessions)
                 self.logger.info(f'closing stale connections {text}')
                 # Give the sockets some time to close gracefully
-                if stale_sessions:
-                    await asyncio.wait([
-                        session.close(force_after=session_timeout // 10) for session in stale_sessions
-                    ])
+                await self._close_sessions(stale_sessions, force_after=session_timeout // 10)
 
             # Consolidate small groups
             group_map = self._group_map()
@@ -587,6 +594,7 @@ class SessionManager:
     async def serve(self, mempool, server_listening_event):
         """Start the RPC server if enabled.  When the event is triggered,
         start TCP and SSL servers."""
+        request_shutdown = False
         try:
             self.logger.info(f'max session count: {self.env.max_sessions:,d}')
             self.logger.info(f'session timeout: '
@@ -600,24 +608,41 @@ class SessionManager:
             await self._start_external_servers()
             server_listening_event.set()
             self.on_available_callback()
-            # Peer discovery should start after the external servers
-            # because we connect to ourself
-            await asyncio.wait([
-                self._clear_stale_sessions(),
-                self._manage_servers()
-            ])
-        except Exception as err:
-            if not isinstance(err, asyncio.CancelledError):
-                log.exception("hub server died")
-            raise err
+            tasks = [
+                asyncio.create_task(self._clear_stale_sessions()),
+                asyncio.create_task(self._manage_servers())
+            ]
+            try:
+                # wait() leaves cancellation to this owner, so task cleanup is
+                # not interrupted by a second cancel from the finally block.
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                request_shutdown = True
+                for task in done:
+                    task.result()
+            finally:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            request_shutdown = True
+            self.logger.exception("hub server died")
+            raise
         finally:
-            await self._close_servers(list(self.servers.keys()))
-            log.info("disconnect %i sessions", len(self.sessions))
-            if self.sessions:
-                await asyncio.wait([
-                    session.close(force_after=1) for session in self.sessions.values()
-                ])
-            await self.stop_other()
+            try:
+                await self._close_servers(list(self.servers.keys()))
+            finally:
+                try:
+                    self.logger.info("disconnect %i sessions", len(self.sessions))
+                    await self._close_sessions(list(self.sessions.values()), force_after=1)
+                finally:
+                    await self.stop_other()
+                    # The owning service cancels serve() when this is signaled.
+                    # Finish cleanup before asking it to stop.
+                    if request_shutdown:
+                        self.shutdown_event.set()
 
     async def start_other(self):
         self.running = True
