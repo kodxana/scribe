@@ -54,11 +54,12 @@ and installed package versions. Set `TEST_OUTPUT_DIR` to change the destination.
 
 ## Resolve and reorg tests
 
-Use the matching SDK checkout, including the shared protobuf 3.20.3 requirement:
+Use the matching SDK checkout, including RPC cancellation cleanup and the
+shared protobuf 3.20.3 requirement:
 
 ```sh
 git clone https://github.com/kodxana/lbry-sdk.git .ci/sdk
-git -C .ci/sdk checkout a509cd605862ad456ef1cf415b8850cd9226dddd
+git -C .ci/sdk checkout 418cd5fac4e60be69b456c9d97a5e8cabb21c053
 sh scripts/test-integration.sh .ci/sdk
 ```
 
@@ -102,10 +103,16 @@ Results use the `local-wheel` suffix and record the supplied wheel's SHA-256.
 Installation is offline and does not replace other dependencies.
 
 CI runs both suites with both bindings. Its maintained binding comes from
-[`kodxana/lbry-rocksdb` at `c4c9e7dc45f32ad99cfff934798b51624f41ed69`](https://github.com/kodxana/lbry-rocksdb/commit/c4c9e7dc45f32ad99cfff934798b51624f41ed69).
+[`kodxana/lbry-rocksdb` at `59cb269cc18e64991174f05a1fa9e9de25fbc2dd`](https://github.com/kodxana/lbry-rocksdb/commit/59cb269cc18e64991174f05a1fa9e9de25fbc2dd),
+which releases live iterators and snapshots safely when a database closes.
 That checkout builds its pinned native libraries and passes its binding suite
 before the wheel reaches the Hub database job. The resolve job downloads and
 tests that same wheel artifact. These workflows do not publish packages.
+
+The default dependency in `setup.py` still selects PyPI's 0.8.2 wheel, which
+does not include those close fixes. The maintained wheel must be supplied
+explicitly until a versioned release is available; updating the CI pin alone
+does not change ordinary Hub installations.
 
 ## Scope
 

@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kodxana/lbry-rocksdb
-          ref: c4c9e7dc45f32ad99cfff934798b51624f41ed69
+          ref: 59cb269cc18e64991174f05a1fa9e9de25fbc2dd
           path: .ci/rocksdb
           submodules: true
           persist-credentials: false
@@ -77,7 +77,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kodxana/lbry-sdk
-          ref: a509cd605862ad456ef1cf415b8850cd9226dddd
+          ref: 418cd5fac4e60be69b456c9d97a5e8cabb21c053
           path: .ci/sdk
           persist-credentials: false
       - name: Download the tested binding
