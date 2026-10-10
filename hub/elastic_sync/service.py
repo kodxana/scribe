@@ -147,11 +147,14 @@ class ElasticSyncService(BlockchainReaderService):
             return False
 
     async def stop_index(self, delete=False):
+        await self._stop_cancellable_tasks()
         if self.sync_client:
-            if delete:
-                await self.delete_index()
-            await self.sync_client.close()
-        self.sync_client = None
+            try:
+                if delete:
+                    await self.delete_index()
+            finally:
+                await self.sync_client.close()
+                self.sync_client = None
 
     async def delete_index(self):
         if self.sync_client:
@@ -415,7 +418,6 @@ class ElasticSyncService(BlockchainReaderService):
         yield self.start_cancellable(self.refresh_blocks_forever)
 
     def _iter_stop_tasks(self):
-        yield self._stop_cancellable_tasks()
         yield self.stop_index()
 
     def run(self, reindex=False):

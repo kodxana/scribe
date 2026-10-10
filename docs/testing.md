@@ -36,6 +36,12 @@ GitHub wheel; other interpreters, operating systems and architectures retain the
 legacy requirement. This checks dependency selection, not runtime support for
 those legacy environments.
 
+The service shutdown tests in `tests/test_service.py` check that background
+tasks finish their cleanup before databases and search clients close. They also
+check that failed tasks are reported, normal shutdown preserves the search
+index, and explicit index deletion waits for reader cleanup. The SDK separately
+tests this ordering against a real temporary Elasticsearch index in regtest.
+
 The 39 cases in `tests/test_migrations.py` cover startup upgrades from every
 supported version (7 through 11) to version 12, with address indexing enabled
 and disabled. Small fixtures encode legacy keys and 94-, 98-, and 102-byte state
