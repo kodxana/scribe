@@ -52,7 +52,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: kodxana/lbry-rocksdb-ng
-          ref: c540bbc9502293101dc29a8535443a69bcf0b821
+          ref: cdbe008312a191b3099065a94c470818b10d6d9d
           path: .ci/rocksdb
           submodules: true
           persist-credentials: false
@@ -60,7 +60,7 @@ jobs:
         if: matrix.binding == 'maintained'
         env:
           TEST_OUTPUT_DIR: ${{ github.workspace }}/ci-results/rocksdb
-        run: sh .ci/rocksdb/scripts/test.sh 3.9
+        run: sh .ci/rocksdb/scripts/test.sh 3.13
       - name: Test the installed Hub package
         env:
           BINDING: ${{ matrix.binding }}

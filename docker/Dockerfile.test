@@ -1,4 +1,4 @@
-FROM python:3.9-bullseye@sha256:5bd3c295ffab8b738108c7705052086d78b036078d5605dfc51e328ab758cc07
+FROM python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 COPY docker/test-requirements.txt /opt/test-requirements.txt

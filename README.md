@@ -12,7 +12,7 @@ This repo provides a python library, `hub`, for building services that use the p
 ![](docs/diagram.png)
 
 Features and overview of `hub` as a python library:
- * Uses Python 3.9 for the current test baseline; newer interpreters are not yet validated for Hub
+ * Uses CPython 3.13 on Linux x86-64 for the current test baseline
  * An interface developers may implement in order to build their own applications able to receive up-to-date blockchain data in an ongoing manner ([hub.service.BlockchainReaderService](hub/service.py))
  * Protobuf schema for encoding and decoding metadata stored on the blockchain ([hub.schema](hub/schema))
  * [Rocksdb 6.25.3](https://github.com/kodxana/lbry-rocksdb-ng/) based database containing the blockchain data ([hub.db](hub/db))
@@ -22,11 +22,11 @@ Features and overview of `hub` as a python library:
 
 Build this fork from source or build your own Docker image as described below. Community releases belong on [this repository's releases page](https://github.com/kodxana/lbry-hub-ng/releases). Historical [upstream binaries](https://github.com/lbryio/hub/releases) and [lbry/hub Docker images](https://hub.docker.com/r/lbry/hub/tags) do not include this fork's fixes.
 
-On Linux x86-64 with CPython 3.9, this fork installs `lbry-rocksdb-ng` 0.8.3
+On Linux x86-64 with CPython 3.13, this fork installs `lbry-rocksdb-ng` 0.8.3
 from a versioned GitHub release with a SHA-256 pin. The wheel requires
-`manylinux_2_31` compatibility (including glibc 2.31 or newer); Alpine/musl is
-not supported. Other platforms and interpreters retain the legacy
-`lbry-rocksdb==0.8.2` requirement and are not newly validated by this change.
+`manylinux_2_35` compatibility (including glibc 2.35 or newer). Alpine/musl,
+other architectures and other Python versions are not supported by this build.
+The installer no longer falls back to the abandoned binding.
 
 Create a fresh virtual environment when upgrading. The old and new bindings
 both install `rocksdb` module files and must not coexist. Updating Hub in place
@@ -44,7 +44,8 @@ docker build -t lbry-hub-ng:development .
 
 ### Install from source
 
-Use Python 3.9 to match the current test baseline. RocksDB binding support on Python 3.13 does not establish Hub support on that version.
+Use CPython 3.13 on Linux x86-64. A C compiler and Python development headers
+are needed to build the resumable SHA-256 dependency from source.
 
 1. clone the community repository
 ```
@@ -53,7 +54,7 @@ cd lbry-hub-ng
 ```
 2. make a virtual env
 ```
-python3.9 -m venv hub-venv
+python3.13 -m venv hub-venv
 ```
 3. from the virtual env, install Hub
 ```
@@ -68,7 +69,7 @@ These can also optionally be run with `python -m hub.scribe`, `python -m hub.ela
 ## Database tests
 
 With Docker and a Linux daemon available, run `sh scripts/test.sh` to build and
-test the installed Hub package on Python 3.9. The database tests use temporary
+test the installed Hub package on Python 3.13. The database tests use temporary
 data and need no blockchain node or Elasticsearch server.
 
 See [the testing guide](docs/testing.md) for the rebuilt RocksDB comparison and

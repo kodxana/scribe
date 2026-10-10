@@ -1,34 +1,24 @@
-from importlib.metadata import PackageNotFoundError, requires, version
+from importlib.metadata import PackageNotFoundError, metadata, requires, version
 
-from packaging.markers import default_environment
 from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
 import pytest
 
 
-@pytest.mark.parametrize('system,machine,python,implementation,expected', [
-    ('linux', 'x86_64', '3.9', 'cpython', 'lbry-rocksdb-ng'),
-    ('linux', 'aarch64', '3.9', 'cpython', 'lbry-rocksdb'),
-    ('linux', 'x86_64', '3.8', 'cpython', 'lbry-rocksdb'),
-    ('linux', 'x86_64', '3.13', 'cpython', 'lbry-rocksdb'),
-    ('linux', 'x86_64', '3.9', 'pypy', 'lbry-rocksdb'),
-    ('darwin', 'x86_64', '3.9', 'cpython', 'lbry-rocksdb'),
-    ('win32', 'AMD64', '3.9', 'cpython', 'lbry-rocksdb'),
-])
-def test_binding_requirement_selects_one_distribution(system, machine, python, implementation, expected):
-    environment = default_environment()
-    environment.update(sys_platform=system, platform_machine=machine,
-                       python_version=python, implementation_name=implementation)
+def test_binding_requirement_uses_the_python313_release():
     bindings = [Requirement(value) for value in requires('hub') if 'rocksdb' in value]
-    selected = [item for item in bindings if item.marker.evaluate(environment)]
-    assert [item.name for item in selected] == [expected]
-    if expected == 'lbry-rocksdb-ng':
-        assert selected[0].url.startswith(
-            'https://github.com/kodxana/lbry-rocksdb-ng/releases/download/v0.8.3/'
-            'lbry_rocksdb_ng-0.8.3-cp39-cp39-manylinux_2_31_x86_64.whl#sha256='
-        )
-        assert len(selected[0].url.split('#sha256=')[1]) == 64
-    else:
-        assert str(selected[0].specifier) == '==0.8.2'
+    assert len(bindings) == 1
+    binding = bindings[0]
+    assert binding.name == 'lbry-rocksdb-ng'
+    assert binding.url == (
+        'https://github.com/kodxana/lbry-rocksdb-ng/releases/download/v0.8.3/'
+        'lbry_rocksdb_ng-0.8.3-cp313-cp313-manylinux_2_35_x86_64.whl'
+        '#sha256=9e905f44895e0815ef6e803da964ee648cfd970cc2621003a92bc822875e3e72'
+    )
+    supported = SpecifierSet(metadata('hub')['Requires-Python'])
+    assert '3.13' in supported
+    assert '3.12' not in supported
+    assert '3.14' not in supported
 
 
 def test_only_maintained_binding_is_installed():
